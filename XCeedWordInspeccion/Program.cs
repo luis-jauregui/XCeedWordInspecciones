@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Data;
 using System.IO;
+using System.Linq;
 using Xceed.Document.NET;
 using Xceed.Words.NET;
 
@@ -7,6 +10,9 @@ namespace XCeedWordInspeccion
 {
     internal class Program
     {
+        
+        private const int MAX_VIAS = 5;
+        
         public static void Main(string[] args)
         {
             
@@ -18,6 +24,61 @@ namespace XCeedWordInspeccion
             using (DocX document = DocX.Load(filename))
             {
                 
+                SqlRepository repository = new SqlRepository();
+
+                List<Model.Ensayo> ensayos = repository.ObtenerEnsayos<Model.Ensayo>(79822, 5, 1).ToList();
+                List<Model.Via> vias = repository.ObtenerVias<Model.Via>(79822, 1, 5).ToList();
+                List<Model.CodigoVia> codigoVias = repository.ObtenerCodigoVias<Model.CodigoVia>("250416.01").ToList();
+                List<Model.ViaResultado> viaResultado = repository.ViasResultados<Model.ViaResultado>(79107, 2).ToList();
+                List<Model.MuestraCls> muestras = repository.ObtenerMuestras<Model.MuestraCls>(79107, 2).ToList();
+                
+                /*DataTable dt = new DataTable();
+                dt.Columns.Add("IdProducto");
+                dt.Columns.Add("Producto");
+                dt.Columns.Add("IdAnalisis");
+                dt.Columns.Add("IdMetodo");
+                dt.Columns.Add("Analisis");
+                dt.Columns.Add("Metodo");
+                
+                
+                foreach (var ensayo in ensayos)
+                {
+                    dt.Rows.Add(ensayo.IdProducto, ensayo.NombreGenerico, ensayo.IdAnalisis, ensayo.IdMetodo,
+                        ensayo.Analisis, ensayo.Abreviatura);
+                }
+
+                foreach (var muestra in muestras)
+                {
+                    dt.Columns.Add(muestra.Presentacion + "-" + muestra.Muestra);
+                }
+
+                int iEnsayoRow = 0;
+                
+                
+                foreach (var ensayo in ensayos)
+                {
+                    for (int iEnsayoCol = 6; iEnsayoCol < dt.Columns.Count; iEnsayoCol++)
+                    {
+                        string ensayoNombreColumna = dt.Columns[iEnsayoCol].ColumnName;
+
+                        foreach (var via in viaResultado.Where(via => via.IdAnalisis == ensayo.IdAnalisis))
+                        {
+                            
+                            bool match = (ensayo.IdProducto == via.IdProducto && ensayo.IdAnalisis == via.IdAnalisis &&
+                                          ensayoNombreColumna == via.CodigoInterno);
+
+                            if (match)
+                            {
+                                dt.Rows[iEnsayoRow][iEnsayoCol] = via.Resultado;
+                            }
+
+                        }
+
+                    }
+
+                    iEnsayoRow++;
+                }*/
+                
                 // Configurar márgenes
                 
                 document.MarginLeft   = 25; // 2.5 cm
@@ -28,13 +89,26 @@ namespace XCeedWordInspeccion
                 // Crear Tabla
                 
                 // CreateTableA(document, 3, 3);
-                // CreateTableB(document, 5, 3);
+
+                var totalTables = (int) Math.Ceiling(vias.Count / (double)MAX_VIAS);
+
+                for (int i = 0; i < totalTables; i++)
+                {
+
+                    List<Model.Via> rangeVias =
+                        vias.GetRange((i * MAX_VIAS), Math.Min(MAX_VIAS, vias.Count - i * MAX_VIAS));
+                    
+                    CreateTableB(document, rangeVias, ensayos);
+                    document.InsertParagraph().SpacingAfter(1);
+                }
+                
+                
                 // CreateTableC(document, 9, 1);
                 // CreateTableD(document, 3);
                 // CreateTableE(document, 3);
                 // CreateTableF(document, 3);
                 // CreateTableG(document, 5, 1);
-                CreateTableH(document, 5, 1);
+                // CreateTableH(document, 5, 1);
 
                 document.Save();
                 
@@ -149,13 +223,13 @@ namespace XCeedWordInspeccion
             document.InsertTable(table);
         }
 
-        public static void CreateTableB(DocX document, int totalVias, int totalEnsayos)
+        public static void CreateTableB(DocX document, List<Model.Via> vias, List<Model.Ensayo> ensayos)
         {
             int headerRows = 3;
             int headerColumns = 7;
 
-            int tableRows = headerRows + totalEnsayos;
-            int tableColumns = headerColumns + totalVias;
+            int tableRows = headerRows + ensayos.Count;
+            int tableColumns = headerColumns + vias.Count;
             
             Table table = document.AddTable(tableRows, tableColumns);
             table.Alignment = Alignment.center;
@@ -190,7 +264,7 @@ namespace XCeedWordInspeccion
                 
             }
             
-            // Combinas filas
+            // Combinar filas
             
             table.MergeCellsInColumn(0, 1, headerRows - 1);
             
@@ -230,16 +304,40 @@ namespace XCeedWordInspeccion
             
             FormatTableCell(table.Rows[1].Cells[4], "CÓDIGO", "Arial", 4, true, Alignment.center);
             
-            // Número de Vías
-
-            Console.WriteLine(table.Rows[1].Cells.Count);
+            // Número de Vías (Dinámicas)
             
-            table.Rows[1].MergeCells(5, 5 + totalVias - 1);
-            FormatTableCell(table.Rows[1].Cells[5], "NÚMERO DE VÍAS", "Arial", 4, true, Alignment.center);
+            for (int i = 0, aux = 0; i < vias.Count;)
+            {
+                string currentVia = vias[i].Presentacion;
+                int startCol = 5 + i - aux;
+                int j = i + 1;
+
+                // Buscar cuántas 'vias' consecutivas tienen la misma presentación
+                while (j < vias.Count && vias[j].Presentacion == currentVia)
+                {
+                    j++;
+                    aux++;
+                }
+
+                int endCol =  5 + j - aux;
+
+                // Formatear y/o fusionar celdas según cantidad de columnas iguales
+                if (j - i > 1)
+                {
+                    table.Rows[1].MergeCells(startCol, endCol);
+                }
+
+                FormatTableCell(table.Rows[1].Cells[startCol], currentVia, "Arial", 4, true, Alignment.center);
+
+                i = j; // Saltar al siguiente grupo
+            }
+
+            /*table.Rows[1].MergeCells(5, 5 + vias.Count - 1);*/
+            // FormatTableCell(table.Rows[1].Cells[5], "NÚMERO DE VÍAS", "Arial", 4, true, Alignment.center);
             
             // Vias (Dinámicas)
                 
-            for (int i = 0, iCellIndex= 6; i < totalVias; i++, iCellIndex++)
+            for (int i = 0, iCellIndex= 6; i < vias.Count; i++, iCellIndex++)
             {
                 FormatTableCell(table.Rows[2].Cells[iCellIndex], $"n{i+1}", "Arial", 4, true, Alignment.center);
             }
@@ -251,6 +349,7 @@ namespace XCeedWordInspeccion
             // Guardar
             
             document.InsertTable(table);
+            
         }
         
         public static void CreateTableC(DocX document, int totalVias, int totalEnsayos)
