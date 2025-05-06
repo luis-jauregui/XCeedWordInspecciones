@@ -1013,7 +1013,7 @@ namespace XCeedWordInspeccion
                     // }
                 }
                 
-                int endCol =  5 + j - (i == 0 ? 1 : aux - 1);
+                int endCol =  startColumnOffset + j - (i == 0 ? 1 : aux - 1);
                 
                 if (j - i > 1)
                 {
