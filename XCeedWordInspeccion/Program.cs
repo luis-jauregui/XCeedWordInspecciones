@@ -26,58 +26,11 @@ namespace XCeedWordInspeccion
                 
                 SqlRepository repository = new SqlRepository();
 
-                List<Model.Ensayo> ensayos = repository.ObtenerEnsayos<Model.Ensayo>(79822, 5, 1).ToList();
-                List<Model.Via> vias = repository.ObtenerVias<Model.Via>(79822, 1, 5).ToList();
-                List<Model.CodigoVia> codigoVias = repository.ObtenerCodigoVias<Model.CodigoVia>("250416.01").ToList();
+                List<Model.Ensayo> ensayos = repository.ObtenerEnsayos<Model.Ensayo>(79107, 5, 2).ToList();
+                List<Model.Via> vias = repository.ObtenerVias<Model.Via>(79107, 2, 5).ToList();
                 List<Model.ViaResultado> viaResultado = repository.ViasResultados<Model.ViaResultado>(79107, 2).ToList();
-                List<Model.MuestraCls> muestras = repository.ObtenerMuestras<Model.MuestraCls>(79107, 2).ToList();
-                
-                /*DataTable dt = new DataTable();
-                dt.Columns.Add("IdProducto");
-                dt.Columns.Add("Producto");
-                dt.Columns.Add("IdAnalisis");
-                dt.Columns.Add("IdMetodo");
-                dt.Columns.Add("Analisis");
-                dt.Columns.Add("Metodo");
-                
-                
-                foreach (var ensayo in ensayos)
-                {
-                    dt.Rows.Add(ensayo.IdProducto, ensayo.NombreGenerico, ensayo.IdAnalisis, ensayo.IdMetodo,
-                        ensayo.Analisis, ensayo.Abreviatura);
-                }
-
-                foreach (var muestra in muestras)
-                {
-                    dt.Columns.Add(muestra.Presentacion + "-" + muestra.Muestra);
-                }
-
-                int iEnsayoRow = 0;
-                
-                
-                foreach (var ensayo in ensayos)
-                {
-                    for (int iEnsayoCol = 6; iEnsayoCol < dt.Columns.Count; iEnsayoCol++)
-                    {
-                        string ensayoNombreColumna = dt.Columns[iEnsayoCol].ColumnName;
-
-                        foreach (var via in viaResultado.Where(via => via.IdAnalisis == ensayo.IdAnalisis))
-                        {
-                            
-                            bool match = (ensayo.IdProducto == via.IdProducto && ensayo.IdAnalisis == via.IdAnalisis &&
-                                          ensayoNombreColumna == via.CodigoInterno);
-
-                            if (match)
-                            {
-                                dt.Rows[iEnsayoRow][iEnsayoCol] = via.Resultado;
-                            }
-
-                        }
-
-                    }
-
-                    iEnsayoRow++;
-                }*/
+                List<Model.CodigoVia> codigoVias = repository.ObtenerCodigoVias<Model.CodigoVia>("250317.23").ToList();
+                List<Model.MuestraCls> muestras = repository.ObtenerMuestras<Model.MuestraCls>(79822, 1).ToList();
                 
                 // Configurar márgenes
                 
@@ -97,8 +50,15 @@ namespace XCeedWordInspeccion
 
                     List<Model.Via> rangeVias =
                         vias.GetRange((i * MAX_VIAS), Math.Min(MAX_VIAS, vias.Count - i * MAX_VIAS));
-                    
-                    CreateTableB(document, rangeVias, ensayos);
+
+                    var rangeResultados =
+                        viaResultado
+                            .OrderBy(v => v.IdAnalisis)
+                            .ThenBy(v => v.CodPrecinto.Substring(1))
+                            .ThenBy(v => int.Parse(v.Muestra.Substring(1)))
+                            .ToList();
+
+                    CreateTableA(document, rangeVias, ensayos, rangeResultados, codigoVias, i, vias.Count);
                     document.InsertParagraph().SpacingAfter(1);
                 }
                 
@@ -125,13 +85,13 @@ namespace XCeedWordInspeccion
 
         }
 
-        public static void CreateTableA(DocX document, int totalVias, int totalEnsayos)
+        public static void CreateTableA(DocX document, List<Model.Via> vias, List<Model.Ensayo> ensayos, List<Model.ViaResultado> viaResultados, List<Model.CodigoVia> codigoVias, int iTable, int numVias)
         {
             int headerRows = 3;
             int headerColumns = 6;
 
-            int tableRows = headerRows + totalEnsayos;
-            int tableColumns = headerColumns + totalVias;
+            int tableRows = headerRows + ensayos.Count;
+            int tableColumns = headerColumns + vias.Count;
             
             Table table = document.AddTable(tableRows, tableColumns);
             table.Alignment = Alignment.center;
@@ -202,16 +162,85 @@ namespace XCeedWordInspeccion
             
             // Distribución de muestras
             
-            table.Rows[0].MergeCells(3, 3 + totalVias - 1);
-            table.Rows[1].MergeCells(3, 3 + totalVias - 1);
+            table.Rows[0].MergeCells(3, 3 + vias.Count - 1);
             FormatTableCell(table.Rows[0].Cells[3], "DISTRIBUCIÓN DE MUESTRAS", "Arial", 3, true, Alignment.center);
-            FormatTableCell(table.Rows[1].Cells[3], "(1)", "Arial", 3, true, Alignment.center);
+            
+            // Código de Vías (Dinámicas)
+            
+            AgruparYFormatearVias(table, vias, codigoVias, 1, 5);
+                
+            // for (int i = 0, aux = 0; i < vias.Count;)
+            // {
+            //     string currentVia = vias[i].Presentacion;
+            //     int startCol = 5 + i - aux;
+            //     int j = i + 1;
+            //
+            //     // Buscar cuántas 'vias' consecutivas tienen la misma presentación
+            //     while (j < vias.Count && vias[j].Presentacion == currentVia)
+            //     {
+            //         j++;
+            //         aux++;
+            //     }
+            //
+            //     int endCol =  5 + j - (i == 0 ? 1 : aux);
+            //
+            //     // Formatear y/o fusionar celdas según cantidad de columnas iguales
+            //     if (j - i > 1)
+            //     {
+            //         table.Rows[1].MergeCells(startCol - 2, endCol - 2); 
+            //         // table.Rows[2].MergeCells(startCol, endCol);
+            //     }
+            //
+            //
+            //     var productoCodigo = codigoVias.Find(x => x.CodigoInterno == currentVia).ProductoCodigo;
+            //     FormatTableCell(table.Rows[1].Cells[startCol - 2], productoCodigo, "Arial", 3, true, Alignment.center);
+            //     
+            //     // FormatTableCell(table.Rows[2].Cells[startCol], currentVia, "Arial", 4, true, Alignment.center); // Codigo
+            //
+            //     i = j; // Saltar al siguiente grupo
+            // }
+            
             
             // Vias (Dinámicas)
                 
-            for (int i = 0, iCellIndex= 5; i < totalVias; i++, iCellIndex++)
+            for (int i = 0, iCellIndex= 5; i < vias.Count; i++, iCellIndex++)
             {
-                FormatTableCell(table.Rows[2].Cells[iCellIndex], $"n{i+1}", "Arial", 3, true, Alignment.center);
+                FormatTableCell(table.Rows[2].Cells[iCellIndex], vias[i].Muestra, "Arial", 4, true, Alignment.center);
+            }
+            
+            // Ensayos
+            
+            for (int i = 0; i < ensayos.Count; i++)
+            {
+
+                string ensayoLabel = ensayos[i].Analisis;
+                
+                FormatTableCell(table.Rows[headerRows + i].Cells[0], ensayoLabel, "Arial", 4, false, Alignment.left);
+                FormatTableCell(table.Rows[headerRows + i].Cells[1], numVias.ToString(), "Arial", 4, false, Alignment.center);
+
+                int j = 5;
+                
+                // Resultado por cada ensayo
+                
+                var resultados = 
+                    viaResultados
+                        .Where(v => v.IdAnalisis == ensayos[i].IdAnalisis).ToList()
+                        .GetRange((iTable * MAX_VIAS), Math.Min(MAX_VIAS, viaResultados.Count - iTable * MAX_VIAS));
+
+                foreach (var via in resultados)
+                {
+                    
+                    // bool match = (ensayos[i].IdProducto == via.IdProducto && ensayos[i].IdAnalisis == via.IdAnalisis && via.CodigoInterno ==);
+
+                    if (true)
+                    {
+                        FormatTableCell(table.Rows[headerRows + i].Cells[j], via.Resultado, "Arial", 4, true, Alignment.center);
+                    }
+
+                    j++;
+
+                }
+                    
             }
             
             // Conclusión
@@ -223,7 +252,7 @@ namespace XCeedWordInspeccion
             document.InsertTable(table);
         }
 
-        public static void CreateTableB(DocX document, List<Model.Via> vias, List<Model.Ensayo> ensayos)
+        public static void CreateTableB(DocX document, List<Model.Via> vias, List<Model.Ensayo> ensayos, List<Model.ViaResultado> viaResultados, int iTable, int numVias)
         {
             int headerRows = 3;
             int headerColumns = 7;
@@ -308,6 +337,7 @@ namespace XCeedWordInspeccion
             
             for (int i = 0, aux = 0; i < vias.Count;)
             {
+                
                 string currentVia = vias[i].Presentacion;
                 int startCol = 5 + i - aux;
                 int j = i + 1;
@@ -319,7 +349,7 @@ namespace XCeedWordInspeccion
                     aux++;
                 }
 
-                int endCol =  5 + j - aux;
+                int endCol =  5 + j - (i == 0 ? 1 : aux);
 
                 // Formatear y/o fusionar celdas según cantidad de columnas iguales
                 if (j - i > 1)
@@ -332,19 +362,52 @@ namespace XCeedWordInspeccion
                 i = j; // Saltar al siguiente grupo
             }
 
-            /*table.Rows[1].MergeCells(5, 5 + vias.Count - 1);*/
-            // FormatTableCell(table.Rows[1].Cells[5], "NÚMERO DE VÍAS", "Arial", 4, true, Alignment.center);
-            
             // Vias (Dinámicas)
                 
             for (int i = 0, iCellIndex= 6; i < vias.Count; i++, iCellIndex++)
             {
-                FormatTableCell(table.Rows[2].Cells[iCellIndex], $"n{i+1}", "Arial", 4, true, Alignment.center);
+                FormatTableCell(table.Rows[2].Cells[iCellIndex], vias[i].Muestra, "Arial", 4, true, Alignment.center);
             }
             
             // Conclusión
             
             FormatTableCell(table.Rows[1].Cells[table.Rows[1].Cells.Count - 1], "CONCLUSIÓN", "Arial", 4, true, Alignment.center);
+            
+            // Ensayos
+            
+            for (int i = 0; i < ensayos.Count; i++)
+            {
+
+                string ensayoLabel = ensayos[i].Analisis;
+                
+                FormatTableCell(table.Rows[headerRows + i].Cells[0], ensayoLabel, "Arial", 4, false, Alignment.left);
+                FormatTableCell(table.Rows[headerRows + i].Cells[1], numVias.ToString(), "Arial", 4, false, Alignment.center);
+
+                int j = 6;
+                
+                // Resultado por cada ensayo
+                
+                var resultados = 
+                    viaResultados
+                        .Where(v => v.IdAnalisis == ensayos[i].IdAnalisis).ToList()
+                        .GetRange((iTable * MAX_VIAS), Math.Min(MAX_VIAS, viaResultados.Count - iTable * MAX_VIAS));
+
+                foreach (var via in resultados)
+                {
+                    
+                    // bool match = (ensayos[i].IdProducto == via.IdProducto && ensayos[i].IdAnalisis == via.IdAnalisis && via.CodigoInterno ==);
+
+                    if (true)
+                    {
+                        FormatTableCell(table.Rows[headerRows + i].Cells[j], via.Resultado, "Arial", 4, true, Alignment.center);
+                    }
+
+                    j++;
+
+                }
+                    
+            }
+            
             
             // Guardar
             
@@ -352,13 +415,13 @@ namespace XCeedWordInspeccion
             
         }
         
-        public static void CreateTableC(DocX document, int totalVias, int totalEnsayos)
+        public static void CreateTableC(DocX document, List<Model.Via> vias, List<Model.Ensayo> ensayos, List<Model.ViaResultado> viaResultados, List<Model.CodigoVia> codigoVias, int iTable, int numVias)
         {
             int headerRows = 3;
             int headerColumns = 6;
 
-            int tableRows = headerRows + totalEnsayos;
-            int tableColumns = headerColumns + totalVias;
+            int tableRows = headerRows + ensayos.Count;
+            int tableColumns = headerColumns + vias.Count;
             
             Table table = document.AddTable(tableRows, tableColumns);
             table.Alignment = Alignment.center;
@@ -429,18 +492,55 @@ namespace XCeedWordInspeccion
             
             // Distribución de muestras
             
-            table.Rows[0].MergeCells(3, 3 + totalVias - 1);
-            table.Rows[1].MergeCells(3, 3 + totalVias - 1);
+            table.Rows[0].MergeCells(3, 3 + vias.Count - 1);
             FormatTableCell(table.Rows[0].Cells[3], "DISTRIBUCIÓN DE MUESTRAS", "Arial", 4, true, Alignment.center);
-            FormatTableCell(table.Rows[1].Cells[3], "(1)", "Arial", 4, true, Alignment.center);
+            
+            // Código de Vías (Dinámicas)
+            
+            AgruparYFormatearVias(table, vias, codigoVias, 1,5);
             
             // Vias (Dinámicas)
                 
-            for (int i = 0, iCellIndex= 5; i < totalVias; i++, iCellIndex++)
+            for (int i = 0, iCellIndex= 5; i < vias.Count; i++, iCellIndex++)
             {
-                FormatTableCell(table.Rows[2].Cells[iCellIndex], $"n{i+1}", "Arial", 4, true, Alignment.center);
+                FormatTableCell(table.Rows[2].Cells[iCellIndex], vias[i].Muestra, "Arial", 4, true, Alignment.center);
             }
             
+            // Ensayos
+            
+            for (int i = 0; i < ensayos.Count; i++)
+            {
+
+                string ensayoLabel = ensayos[i].Analisis;
+                
+                FormatTableCell(table.Rows[headerRows + i].Cells[0], ensayoLabel, "Arial", 4, false, Alignment.left);
+                FormatTableCell(table.Rows[headerRows + i].Cells[1], numVias.ToString(), "Arial", 4, false, Alignment.center);
+
+                int j = 5;
+                
+                // Resultado por cada ensayo
+                
+                var resultados = 
+                    viaResultados
+                        .Where(v => v.IdAnalisis == ensayos[i].IdAnalisis).ToList()
+                        .GetRange((iTable * MAX_VIAS), Math.Min(MAX_VIAS, viaResultados.Count - iTable * MAX_VIAS));
+
+                foreach (var via in resultados)
+                {
+                    
+                    // bool match = (ensayos[i].IdProducto == via.IdProducto && ensayos[i].IdAnalisis == via.IdAnalisis && via.CodigoInterno ==);
+
+                    if (true)
+                    {
+                        FormatTableCell(table.Rows[headerRows + i].Cells[j], via.Resultado, "Arial", 4, true, Alignment.center);
+                    }
+
+                    j++;
+
+                }
+                    
+            }
+                
             // Conclusión
 
             FormatTableCell(table.Rows[0].Cells[table.Rows[0].Cells.Count - 1], "CONCLUSIÓN", "Arial", 4, true, Alignment.center);
@@ -893,5 +993,40 @@ namespace XCeedWordInspeccion
             cell.VerticalAlignment = VerticalAlignment.Center;
             cell.TextDirection = textDirection;
         }
+        
+        private static void AgruparYFormatearVias(Table table, List<Model.Via> vias, List<Model.CodigoVia> codigoVias, int rowIndex,
+            int startColumnOffset)
+        {
+            for (int i = 0, aux = 0; i < vias.Count;)
+            {
+                string currentVia = vias[i].Presentacion;
+                int startCol = startColumnOffset + i - aux;
+                
+                int j = i + 1;
+        
+                for (int k = 0; j < vias.Count && vias[j].Presentacion == currentVia; j++, k++)
+                {
+                    aux++;
+                    // if (k == 0)
+                    // {
+                    //     aux++;
+                    // }
+                }
+                
+                int endCol =  5 + j - (i == 0 ? 1 : aux - 1);
+                
+                if (j - i > 1)
+                {
+                    table.Rows[rowIndex].MergeCells(startCol - 2, endCol - 2);
+                }
+        
+                var productoCodigo = codigoVias.Find(x => x.CodigoInterno == currentVia)?.ProductoCodigo ?? "";
+                FormatTableCell(table.Rows[rowIndex].Cells[startCol - 2], productoCodigo, "Arial", 3, true,
+                    Alignment.center);
+        
+                i = j;
+            }
+        }
+        
     }
 }
