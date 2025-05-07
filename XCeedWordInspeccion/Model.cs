@@ -22,6 +22,7 @@
         {
             public int IdProducto { get; set; }
             public string ProductoCodigo { get; set; }
+            public string Vias { get; set; }
             public string CodigoInterno { get; set; }
         }
 
