@@ -18,6 +18,11 @@
            public string Abreviatura { get; set; }
         }
         
+        public class LoteCls
+        {
+            public string Lote { get; set; }
+        }
+        
         public class CodigoVia
         {
             public int IdProducto { get; set; }

@@ -60,6 +60,22 @@ namespace XCeedWordInspeccion
             
         }
         
+        public T ObtenerLote<T>(int idCotizacion)
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string storedProcedure = "sp_ObtenerLotePorCotizacion"; // Nombre del procedimiento almacenado
+        
+                return connection.QuerySingleOrDefault<T>(
+                    storedProcedure,
+                    new { IdCotizacion = idCotizacion },
+                    commandType: CommandType.StoredProcedure // Indicar que es un SP
+                );
+            }
+            
+        }
+        
         public IEnumerable<T> ViasResultados<T>(int idOt, int correlativo)
         {
             using (SqlConnection connection = new SqlConnection(_connectionString))
