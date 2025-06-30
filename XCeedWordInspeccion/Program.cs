@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using Xceed.Document.NET;
 using Xceed.Words.NET;
@@ -27,9 +28,9 @@ namespace XCeedWordInspeccion
                 
                 SqlRepository repository = new SqlRepository();
 
-                List<Model.Ensayo> ensayos = repository.ObtenerEnsayos<Model.Ensayo>(81531, 5, 1).ToList();
+                List<Model.Ensayo> ensayos = repository.ObtenerEnsayos<Model.Ensayo>(81531, 5, 2).ToList();
                 List<Model.Via> vias = repository.ObtenerVias<Model.Via>(81531, 2, 5).ToList();
-                List<Model.ViaResultado> viaResultado = repository.ViasResultados<Model.ViaResultado>(81531, 1).ToList();
+                List<Model.ViaResultado> viaResultado = repository.ViasResultados<Model.ViaResultado>(81531, 2).ToList();
                 List<Model.CodigoVia> codigoVias = repository.ObtenerCodigoVias<Model.CodigoVia>("250531.03").ToList();
                 List<Model.MuestraCls> muestras = repository.ObtenerMuestras<Model.MuestraCls>(81531, 2).ToList();
                 // Model.LoteCls lote = repository.ObtenerLote<Model.LoteCls > (81531);
@@ -43,9 +44,40 @@ namespace XCeedWordInspeccion
                 
                 // Crear Tabla
                 
+                // Hacer un filtro para que no se repita filas con el mismo código de vía
+                
+                codigoVias = codigoVias
+                    .GroupBy(c => c.CodigoInterno)
+                    .Select(g => g.First())
+                    .ToList();
+                
+                // Pero si mi codigo via es por ejemplo "M1", "M2" como puedo ordenarlo ascendenten
+                
+                codigoVias = codigoVias
+                    .OrderBy(c => c.CodigoInterno)
+                    .ThenBy(c => c.ProductoCodigo)
+                    .ToList();
+                
+                CrearTablaEsterilidadComercial(document, ensayos, codigoVias, viaResultado);
+                document.InsertParagraph().SpacingAfter(10);
+                CrearTablaIndicadoresParasitologicos(document, codigoVias);
+                document.InsertParagraph().SpacingAfter(10);
+                CrearTablaEvaluacionDobleCierre(document, codigoVias, repository);
+                document.InsertParagraph().SpacingAfter(10);
+                CrearTablaDeterminacionVacia(document, codigoVias, repository);
+                document.InsertParagraph().SpacingAfter(10);
+                CrearTablaHistamina(document, codigoVias, repository);
+                document.InsertParagraph().SpacingAfter(10);
+                CrearTablaMetalesPesados(document, codigoVias, repository);
+                document.InsertParagraph().SpacingAfter(10);
+                CrearTablaExtensionesSensoriales(document, codigoVias, repository);
+                
                 // CrearTablaK(document, ensayos, codigoVias);
-                // CrearTablaIndicadoresParasitologicos(document, vias, codigoVias);
                 // CrearTablaB(document, vias, codigoVias);
+                // CrearTablaDeterminacionVacia(document, codigoVias);
+                // CrearTablaHistamina(document, codigoVias);
+                // CrearTablaMetalesPesados(document, codigoVias);
+                // CrearTablaExtensionesSensoriales(document, codigoVias);
                 
                 // var totalTables = (int) Math.Ceiling(vias.Count / (double)MAX_VIAS);
                 //
@@ -251,7 +283,7 @@ namespace XCeedWordInspeccion
             document.InsertTable(table);
         }
 
-        public static void CreateTableB(DocX document, List<Model.Via> vias, List<Model.Ensayo> ensayos, List<Model.ViaResultado> viaResultados, int iTable, int numVias)
+        public static void CreateTableB(DocX document, List<Model.Via> vias, List<Model.Ensayo> ensayos, List<Model.ViaResultado> viaResultados, int iTable)
         {
             int headerRows = 4;
             int headerColumns = 7;
@@ -974,7 +1006,7 @@ namespace XCeedWordInspeccion
             
             // Ancho de columnas
             
-            int[] columnWidths = { 50, 50, 30, 30, 40, 40, 50, 50, 50, 50, 50 };
+            int[] columnWidths = { 50, 50, 30, 30, 40, 40, 40, 50, 50, 50, 50 };
             
             for (int i = 0; i < tableColumns; i++)
             {
@@ -1046,12 +1078,17 @@ namespace XCeedWordInspeccion
             document.InsertTable(table);
         }
         
-        public static void CreateTableJ(DocX document, List<Model.CodigoVia> codigoVias)
+        public static void CrearTablaEvaluacionDobleCierre(DocX document, List<Model.CodigoVia> codigoVias, SqlRepository repository)
         {
+            
+            List<Model.SpGetTablaEvaluacionDobleCierre> tablaResultados =
+                repository.ObtenerTablaEvaluacion<Model.SpGetTablaEvaluacionDobleCierre>(81531, 1).ToList();
+            
             int cabeceraFilas = 4;
-            int cabeceraColumnas = 12;
+            // int cabeceraColumnas = 13;
+            int cabeceraColumnas = 21;
 
-            int tablaFilas = cabeceraFilas + codigoVias.Count;
+            int tablaFilas = cabeceraFilas + (codigoVias.Count * 5); // El usuario indica que siempre van a tener 5 filas
             int tablaColumnas = cabeceraColumnas;
             
             Table tabla = document.AddTable(tablaFilas, tablaColumnas);
@@ -1065,7 +1102,7 @@ namespace XCeedWordInspeccion
             
             // Ancho de columnas
             
-            int[] columnWidths = { 20, 30, 20, 25, 25, 60, 60, 60, 60, 60, 60, 60 };
+            int[] columnWidths = { 20, 20, 20, 35, 40, 40, 20,20,20, 20,20,20, 20,20,20, 20,20,20, 32, 30, 50 };
             
             for (int i = 0; i < tablaColumnas; i++)
             {
@@ -1074,10 +1111,31 @@ namespace XCeedWordInspeccion
             
             // Combinar filas
             
-            tabla.MergeCellsInColumn(0, 1, cabeceraFilas - 1);
-            tabla.MergeCellsInColumn(1, 1, cabeceraFilas - 1);
-            tabla.MergeCellsInColumn(tabla.ColumnCount - 1, 1, cabeceraFilas - 1);
-            tabla.Rows[0].MergeCells(0, tabla.ColumnCount - 1); // Titulo
+            tabla.MergeCellsInColumn(tabla.ColumnCount - 1, 2, cabeceraFilas - 1); // Ùltima columnna
+            tabla.Rows[0].MergeCells(0, tabla.ColumnCount - 1);
+            
+            tabla.Rows[2].MergeCells(6, 8); // Compacidad
+            tabla.Rows[2].MergeCells(7, 9); // Penetracion
+            tabla.Rows[2].MergeCells(8, 10); // Traslape
+            tabla.Rows[2].MergeCells(9, 11); // Traslape teorico
+            
+            tabla.Rows[3].MergeCells(6, 8); // Compacidad
+            tabla.Rows[3].MergeCells(7, 9); // Penetracion
+            tabla.Rows[3].MergeCells(8, 10); // Traslape
+            tabla.Rows[3].MergeCells(9, 11); // Traslape teorico
+
+            tabla.MergeCellsInColumn(0, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(1, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(2, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(2, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(3, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(4, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(5, 2, cabeceraFilas - 1);
+            
+            tabla.MergeCellsInColumn(6, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(7, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(8, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(9, 2, cabeceraFilas - 1);
             
             // Requisitos
             
@@ -1085,67 +1143,220 @@ namespace XCeedWordInspeccion
             FormatTableCell(tabla.Rows[1].Cells[0], "REQUISITOS PARA LA EVALUACION DEL DOBLE CIERRE EN ENVASES DE HOJALATA", 7, true, Alignment.center, true);
             
             // Código
-            
+
+            tabla.Rows[2].Height = 80;
+            tabla.Rows[3].Height = 20;
             FormatTableCell(tabla.Rows[2].Cells[0], "CODIGO", 7, true, Alignment.center, true, TextDirection.btLr);
             
             // Vías (n)
             
-            FormatTableCell(tabla.Rows[2].Cells[1], "VIAS (n)", 7, true, Alignment.center);
+            FormatTableCell(tabla.Rows[2].Cells[1], "VIAS (n)", 7, true, Alignment.center, true, TextDirection.btLr);
             
             // Tolerancia
             
-            FormatTableCell(tabla.Rows[2].Cells[0], "TOLERANCIA", 7, true, Alignment.center, true, TextDirection.btLr);
+            FormatTableCell(tabla.Rows[2].Cells[2], "TOLERANCIA", 7, true, Alignment.center, true, TextDirection.btLr);
             
-            // Numero de aceptación
+            // Ganchos
+
+            var celdaGanchos = tabla.Rows[2].Cells[3];
             
-            tabla.Rows[2].MergeCells(2, 3);
-            FormatTableCell(tabla.Rows[2].Cells[2], "Ganchos de cuerpo y tapa", 6, true, Alignment.center);
-            // FormatTableCell(tabla.Rows[3].Cells[2], "No", 6, true, Alignment.center);
-            // FormatTableCell(tabla.Rows[3].Cells[3], "(c)*", 6, true, Alignment.center);
+            Paragraph pGanchos = celdaGanchos.Paragraphs.First();
             
-            // Especie
+            pGanchos.Append("Ganchos de cuerpo y tapa").FontSize(5).Font("Arial").UnderlineStyle(UnderlineStyle.singleLine).Bold();
+            pGanchos.AppendLine();
+            pGanchos.Append("Uniformes en su perímetro").FontSize(4).Font("Arial");
+
+            pGanchos.Alignment = Alignment.center;
+            celdaGanchos.FillColor = Color.FromArgb(234, 241, 221);
+            celdaGanchos.VerticalAlignment = VerticalAlignment.Center;
             
-            FormatTableCell(tabla.Rows[2].Cells[3], "ESPECIE", 5, true, Alignment.center);
-            FormatTableCell(tabla.Rows[3].Cells[4], "Corresponde a la declarada por el exportador", 6, false, Alignment.center);
+            // Borde
             
-            // Presentación
+            var celdaBordes = tabla.Rows[2].Cells[4];
             
-            FormatTableCell(tabla.Rows[2].Cells[4], "PRESENTACIÓN", 5, true, Alignment.center);
-            FormatTableCell(tabla.Rows[3].Cells[5], "Corresponde a la declarada por el exportador y debe incluir todos los aspectos señalados por éste (ejemplo: tipo de corte, tipo de empaque, entre otros)", 6, false, Alignment.center);
+            Paragraph pBordes = celdaBordes.Paragraphs.First();
             
-            // Aspecto
+            pBordes.Append("Borde superior e inferior del doble cierre").FontSize(5).Font("Arial").UnderlineStyle(UnderlineStyle.singleLine).Bold();
+            pBordes.AppendLine();
+            pBordes.Append("Lisos y sin irregularidades").FontSize(4).Font("Arial");
+
+            pBordes.Alignment = Alignment.center;
+            celdaBordes.FillColor = Color.FromArgb(234, 241, 221);
+            celdaBordes.VerticalAlignment = VerticalAlignment.Center;
             
-            FormatTableCell(tabla.Rows[2].Cells[5], "ASPECTO", 5, true, Alignment.center);
-            FormatTableCell(tabla.Rows[3].Cells[6], "Normal. Ausencia de materias extrañas, no existen zonas micóticas, ni moho halófilo. Ausencia de quemaduras por excesivo calentamiento durante el secado evidenciadas por una piel viscosa o pegajosa.", 6, false, Alignment.center);
+            // Compuesto
             
-            // Olor
+            var celdaCompuesto = tabla.Rows[2].Cells[5];
             
-            FormatTableCell(tabla.Rows[2].Cells[6], "OLOR", 5, true, Alignment.center);
-            FormatTableCell(tabla.Rows[3].Cells[7], "Propio, característico. Ausencia de olores objetables, persistentes e inconfundibles que sean signos de descomposición (olor acido, pútrido. Etc.) o de contaminación pos sustancias extrañas (comestibles, productos de limpieza, etc).", 6, false, Alignment.center);
+            Paragraph pCompuesto = celdaCompuesto.Paragraphs.First();
             
-            // Color
+            pCompuesto.Append("Compuesto sellador").FontSize(5).Font("Arial").UnderlineStyle(UnderlineStyle.singleLine).Bold();
+            pCompuesto.AppendLine();
+            pCompuesto.Append("Debe cubrir los espacios libres internos del doble cierre").FontSize(4).Font("Arial");
+
+            pCompuesto.Alignment = Alignment.center;
+            celdaCompuesto.FillColor = Color.FromArgb(234, 241, 221);
+            celdaCompuesto.VerticalAlignment = VerticalAlignment.Center;
             
-            FormatTableCell(tabla.Rows[2].Cells[7], "COLOR", 5, true, Alignment.center);
-            FormatTableCell(tabla.Rows[3].Cells[8], "Natural, típico y uniforme. No se permite la presencia de manchas rojizas o verdosas ni decoloración amarilla o naranja amarillenta.", 6, false, Alignment.center);
+            // Compacidad
             
-            // Textura
+            var celdaCompacidad = tabla.Rows[2].Cells[6];
             
-            FormatTableCell(tabla.Rows[2].Cells[8], "TEXTURA", 5, true, Alignment.center);
-            FormatTableCell(tabla.Rows[3].Cells[9], "Típica de acuerdo al producto. Ausencia de carne con textura caracterizada por agnetamiento generalizado en más de dos tercios de la superficie, desgarrada o rota.", 6, false, Alignment.center);
+            Paragraph pCompacidad = celdaCompacidad.Paragraphs.First();
+            
+            pCompacidad.Append("Compacidad (%)").FontSize(5).Font("Arial").UnderlineStyle(UnderlineStyle.singleLine).Bold();
+            pCompacidad.AppendLine();
+            pCompacidad.Append("Envases redondos: Mayor o igual al 75%.").FontSize(4).Font("Arial");
+            pCompacidad.AppendLine();
+            pCompacidad.Append("Envases de forma: Mayor o igual al 60%").FontSize(4).Font("Arial");
+
+            pCompacidad.Alignment = Alignment.center;
+            celdaCompacidad.FillColor = Color.FromArgb(234, 241, 221);
+            celdaCompacidad.VerticalAlignment = VerticalAlignment.Center;
+            
+            // Penetracion
+            
+            var celdaPenetracion = tabla.Rows[2].Cells[7];
+            
+            Paragraph pPenetracion = celdaPenetracion.Paragraphs.First();
+            
+            pPenetracion.Append("Penetración de gancho de cuerpo (%)").FontSize(5).Font("Arial").UnderlineStyle(UnderlineStyle.singleLine).Bold();
+            pPenetracion.AppendLine();
+            pPenetracion.Append("Mayor o igual al 70%").FontSize(4).Font("Arial");
+
+            pPenetracion.Alignment = Alignment.center;
+            celdaPenetracion.FillColor = Color.FromArgb(234, 241, 221);
+            celdaPenetracion.VerticalAlignment = VerticalAlignment.Center;
+            
+            // Traslape
+            
+            var celdaTraslape = tabla.Rows[2].Cells[8];
+            
+            Paragraph pTraslape = celdaTraslape.Paragraphs.First();
+            
+            pTraslape.Append("Traslape (%)").FontSize(5).Font("Arial").UnderlineStyle(UnderlineStyle.singleLine).Bold();
+            pTraslape.AppendLine();
+            pTraslape.Append("Mayor o igual al 45%").FontSize(4).Font("Arial");
+
+            pTraslape.Alignment = Alignment.center;
+            celdaTraslape.FillColor = Color.FromArgb(234, 241, 221);
+            celdaTraslape.VerticalAlignment = VerticalAlignment.Center;
+            
+            // Traslape teorico
+            
+            var celdaTraslapeTeorico = tabla.Rows[2].Cells[9];
+            
+            Paragraph pTraslapeTeorico = celdaTraslapeTeorico.Paragraphs.First();
+            
+            pTraslapeTeorico.Append("Traslape teórico (mm)").FontSize(5).Font("Arial").UnderlineStyle(UnderlineStyle.singleLine).Bold();
+            pTraslapeTeorico.AppendLine();
+            pTraslapeTeorico.Append("Mayor o igual a 1mm").FontSize(4).Font("Arial");
+
+            pTraslapeTeorico.Alignment = Alignment.center;
+            celdaTraslapeTeorico.FillColor = Color.FromArgb(234, 241, 221);
+            celdaTraslapeTeorico.VerticalAlignment = VerticalAlignment.Center;
+            
+            // Arrugas
+            
+            var celdaArrugas = tabla.Rows[2].Cells[10];
+            
+            Paragraph pArrugasTitulo = celdaArrugas.Paragraphs.First();
+            
+            pArrugasTitulo.Append("Arrugas (grado de apriente)").FontSize(5).Font("Arial").UnderlineStyle(UnderlineStyle.singleLine).Bold();
+            
+            pArrugasTitulo.Alignment = Alignment.center;
+
+            Paragraph pArrugas = celdaArrugas.InsertParagraph();
+            
+            pArrugas.Append("Envases redondos: La arruga no debe tener una longitud que represente mas del 25% de la longitud del gancho de tapa (grado de apriete mayor al 75%)").FontSize(4).Font("Arial");
+            pArrugas.AppendLine();
+            pArrugas.Append("Envases irregulares: La peor arruga no debe tener una longitud que represente mas del 40% de la longitud del gancho de tapa (grado de apriete mayor al 60%)").FontSize(4).Font("Arial");
+
+            pArrugas.Alignment = Alignment.left;
+            
+            celdaArrugas.FillColor = Color.FromArgb(234, 241, 221);
+            celdaArrugas.VerticalAlignment = VerticalAlignment.Center;
+            
+            tabla.Rows[2].MergeCells(10, 11);
+            FormatTableCell(tabla.Rows[3].Cells[10], "PLANCHADO (%)", 4, true, Alignment.center);
+            FormatTableCell(tabla.Rows[3].Cells[11], "ARRUGAS (%)", 4, true, Alignment.center);
 
             // Conclusión
             
-            FormatTableCell(tabla.Rows[2].Cells[9], "CONCLUSIÓN", 8, true, Alignment.center);
+            FormatTableCell(tabla.Rows[2].Cells[11], "CONCLUSIÓN", 7, true, Alignment.center);
             
             // Muestras
             
-            for (int i = 0, iRowIndex= cabeceraFilas; i < codigoVias.Count; i++, iRowIndex++)
+            for (int i = 0, inicioVias = cabeceraFilas; i < codigoVias.Count; i++, inicioVias += 5)
             {
                 
-                // Codigo
+                string codigoInterno = codigoVias[i].CodigoInterno;
+                FormatTableCell(tabla.Rows[inicioVias].Cells[0], codigoInterno, 5, true, Alignment.center, false);
                 
-                FormatTableCell(tabla.Rows[iRowIndex].Cells[0], codigoVias[i].CodigoInterno, 8, true, Alignment.center, false);
-                FormatTableCell(tabla.Rows[iRowIndex].Cells[1], codigoVias[i].Vias, 7, true, Alignment.center, false);
+                tabla.MergeCellsInColumn(0, inicioVias, inicioVias + 4);
+                
+                tabla.MergeCellsInColumn(tabla.ColumnCount - 1, inicioVias, inicioVias + 4);
+                
+                tabla.MergeCellsInColumn(2, inicioVias, inicioVias + 4);
+                
+                FormatTableCell(tabla.Rows[inicioVias].Cells[2], "0", 5, true, Alignment.center, false);
+                
+                // Vias
+                
+                // TODO: revisar el numeros de vias del for tiene que traerde la base de datos
+
+                for (int j = 0; j < 5; j++) 
+                {
+                    FormatTableCell(tabla.Rows[inicioVias + j].Cells[1], (j + 1).ToString(), 6, false, Alignment.center, false);
+
+                    if (tablaResultados.Count > 0)
+                    {
+                        var resultado = tablaResultados.FirstOrDefault(x => x.Codigos == codigoVias[i].CodigoInterno && x.Vias == j + 1);
+                        
+                        if (resultado != null)
+                        {
+                            
+                            // Compacidad
+                            
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[6], FormatearResultadoNumerico(resultado.Compacidad1), 5, false, Alignment.center, false);
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[7], FormatearResultadoNumerico(resultado.Compacidad2), 5, false, Alignment.center, false);
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[8], FormatearResultadoNumerico(resultado.Compacidad3), 5, false, Alignment.center, false);
+                            
+                            // Penetracion
+                            
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[9], FormatearResultadoNumerico(resultado.PenetracionDeGanchoDeCuerpo1), 5, false, Alignment.center, false);
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[10], FormatearResultadoNumerico(resultado.PenetracionDeGanchoDeCuerpo2), 5, false, Alignment.center, false);
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[11], FormatearResultadoNumerico(resultado.PenetracionDeGanchoDeCuerpo3), 5, false, Alignment.center, false);
+                            
+                            // Traslape
+                            
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[12], FormatearResultadoNumerico(resultado.Traslape1), 5, false, Alignment.center, false);
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[13], FormatearResultadoNumerico(resultado.Traslape2), 5, false, Alignment.center, false);
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[14], FormatearResultadoNumerico(resultado.Traslape3), 5, false, Alignment.center, false);
+                            
+                            // Traslape teorico
+                            
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[15], FormatearResultadoNumerico(resultado.Traslapem1), 5, false, Alignment.center, false);
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[16], FormatearResultadoNumerico(resultado.Traslapem2), 5, false, Alignment.center, false);
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[17], FormatearResultadoNumerico(resultado.Traslapem2), 5, false, Alignment.center, false);
+                            
+                            // Planchados
+                            
+                            //TODO: falta el resultado o en todo caso preguntar como calcular
+                            
+                            // Arrugas
+                            
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[19], resultado.Arrugas, 5, false, Alignment.center, false);
+                            
+                            
+                        }
+                        else
+                        {
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[4], "N/A", 6, false, Alignment.center, false);
+                        }
+                    }
+                    
+                }
                 
             }
             
@@ -1252,7 +1463,7 @@ namespace XCeedWordInspeccion
         }
         
         
-        public static void CrearTablaIndicadoresParasitologicos(DocX document, List<Model.Via> vias, List<Model.CodigoVia> codigoVias)
+        public static void CrearTablaIndicadoresParasitologicos(DocX document, List<Model.CodigoVia> codigoVias)
         {
             int cabeceraFilas = 3;
             int cabeceraColumnas = 5;
@@ -1313,8 +1524,8 @@ namespace XCeedWordInspeccion
                 string codigoInterno = codigoVias[i].CodigoInterno;
                 string rangoVias = codigoVias[i].Vias;
                 FormatTableCell(tabla.Rows[inicioVias].Cells[0], codigoInterno, 6, true, Alignment.center, false);
-                FormatTableCell(tabla.Rows[inicioVias].Cells[1], rangoVias, 6, true, Alignment.center, false);
-                FormatTableCell(tabla.Rows[inicioVias].Cells[2], "Ausencia de parásitos visibles", 6, true, Alignment.center, false);
+                FormatTableCell(tabla.Rows[inicioVias].Cells[1], rangoVias, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[inicioVias].Cells[2], "Ausencia de parásitos visibles", 6, false, Alignment.center, false);
             }
             
             // Si no hay descripción eliminamos la ultima fila
@@ -1324,6 +1535,532 @@ namespace XCeedWordInspeccion
             document.InsertTable(tabla);
         }
         
+        
+        public static void CrearTablaDeterminacionVacia(DocX document, List<Model.CodigoVia> codigoVias, SqlRepository repository)
+        {
+            int cabeceraFilas = 3;
+            int cabeceraColumnas = 6;
+
+            int tablaFilas = cabeceraFilas + (codigoVias.Count * 5); // El usuario indica que siempre van a tener 5 filas
+            int tablaColumnas = cabeceraColumnas;
+            
+            Table tabla = document.AddTable(tablaFilas, tablaColumnas);
+            tabla.Alignment = Alignment.left;
+            
+            // Titulo
+            
+            AgregarTitulo(tabla, "INSPECCIÓN DE LOTES POR MUESTREO (CARACTERÍSTICAS FÍSICO-SENSORIALES) - PERÚ Y OTROS PAÍSES. NUMERAL 1.2.7");
+            
+            // Encabezado
+            
+            // Ancho de columnas
+            
+            int[] columnWidths = { 20, 25, 20, 300, 100, 60 };
+            
+            for (int i = 0; i < tablaColumnas; i++)
+            {
+                tabla.SetColumnWidth(i, columnWidths[i]);
+            }
+            
+            // Combinar filas
+            
+            // tabla.MergeCellsInColumn(0, 2, cabeceraFilas - 1);
+            // tabla.MergeCellsInColumn(1, 2, cabeceraFilas - 1);
+            // tabla.MergeCellsInColumn(2, 2, cabeceraFilas - 1);
+            // tabla.MergeCellsInColumn(2, 2, cabeceraFilas - 1);
+            // tabla.MergeCellsInColumn(2, 2, cabeceraFilas - 1);
+            // tabla.MergeCellsInColumn(tabla.ColumnCount - 1, 2, cabeceraFilas - 1); // Ùltima columnna
+            
+            tabla.Rows[0].MergeCells(0, tabla.ColumnCount - 1); // Titulo
+            
+            // Requisitos
+            
+            tabla.Rows[1].MergeCells(0, tabla.Rows[1].Cells.Count - 1);
+            FormatTableCell(tabla.Rows[1].Cells[0], "REQUISITOS PARA LA DETERMINACION DE VACIO", 7, true, Alignment.center, true);
+            
+            // Código
+
+            tabla.Rows[2].Height = 80;
+            FormatTableCell(tabla.Rows[2].Cells[0], "CODIGO", 7, true, Alignment.center, true, TextDirection.btLr);
+            
+            // Vías (n)
+            
+            FormatTableCell(tabla.Rows[2].Cells[1], "VIAS (n)", 7, true, Alignment.center);
+            
+            // Tolerancia
+            
+            FormatTableCell(tabla.Rows[2].Cells[2], "TOLERANCIA", 7, true, Alignment.center, true, TextDirection.btLr);
+            
+            // Requisitos
+            
+            FormatTableCell(tabla.Rows[2].Cells[3], "REQUISITOS", 7, true, Alignment.center, true);
+            
+            // Resultados
+            
+            FormatTableCell(tabla.Rows[2].Cells[4], "RESULTADOS (mm Hg)", 7, true, Alignment.center, true);
+            
+            // Conclusion
+            
+            FormatTableCell(tabla.Rows[2].Cells[5], "CONCLUSIÓN", 7, true, Alignment.center, true);
+            
+            // Muestras
+            
+            for (int i = 0, inicioVias = cabeceraFilas; i < codigoVias.Count; i++, inicioVias += 5)
+            {
+                
+                string codigoInterno = codigoVias[i].CodigoInterno;
+                FormatTableCell(tabla.Rows[inicioVias].Cells[0], codigoInterno, 5, true, Alignment.center, false);
+                
+                tabla.MergeCellsInColumn(0, inicioVias, inicioVias + 4);
+                tabla.MergeCellsInColumn(2, inicioVias, inicioVias + 4);
+                tabla.MergeCellsInColumn(3, inicioVias, inicioVias + 4);
+                tabla.MergeCellsInColumn(5, inicioVias, inicioVias + 4);
+                
+                FormatTableCell(tabla.Rows[inicioVias].Cells[2], "0", 6, false, Alignment.center, false);
+
+                string requisitosTexto =
+                    "- El vacio mínimo en envases de hojalata cilíndricos con capacidad de hasta 370ml deberá ser no menor a 76.2mmHg (3 pulgadas de Hg)." +
+                    "\n- Para los envases rectangulares, el vacio mínimo deberá ser de 40mm Hg (1.6 pulgadas de Hg)." +
+                    "\n- El vacio mínimo en envases de vidrio, deberá ser no menor de 140mm Hg (5.5 pulgadas de Hg). " +
+                    "\n  El vacio mínimo en envases de hojalata con capacidad mayor a 370ml hasta 500ml deberá ser no menor a 150mm Hg (6 pulgadas de hg).";
+                
+                FormatTableCell(tabla.Rows[inicioVias].Cells[3], requisitosTexto, 5, false, Alignment.left, false);
+                
+                // Vias y Resultados
+
+                for (int j = 0; j < 5; j++) 
+                {
+                    
+                    // Vias
+                    
+                    FormatTableCell(tabla.Rows[inicioVias + j].Cells[1], (j + 1).ToString(), 6, false, Alignment.center, false);
+                    
+                    // Resultados
+                    
+                    // if (tablaResultados.Count > 0)
+                    // {
+                    //     var resultado = tablaResultados.FirstOrDefault(x => x.Codigos == codigoVias[i].CodigoInterno && x.Vias == j + 1);
+                    //     
+                    //     if (resultado != null)
+                    //     {
+                    //         
+                    //         // Compacidad
+                    //         
+                    //         FormatTableCell(tabla.Rows[inicioVias + j].Cells[6], resultado.Compacidad1, 5, false, Alignment.center, false);
+                    //         FormatTableCell(tabla.Rows[inicioVias + j].Cells[7], resultado.Compacidad2, 5, false, Alignment.center, false);
+                    //         FormatTableCell(tabla.Rows[inicioVias + j].Cells[8], resultado.Compacidad3, 5, false, Alignment.center, false);
+                    //         
+                    //     }
+                    //     else
+                    //     {
+                    //         FormatTableCell(tabla.Rows[inicioVias + j].Cells[4], "N/A", 6, false, Alignment.center, false);
+                    //     }
+                    // }
+                    // else
+                    //
+                    //     FormatTableCell(tabla.Rows[inicioVias + j].Cells[4], "N/A", 6, false, Alignment.center, false);
+                    // }
+                    
+                }
+                
+            }
+            
+            tabla.Rows.Last().Remove();
+
+            // Guardar
+
+            document.InsertTable(tabla);
+            
+        }
+        
+        public static void CrearTablaHistamina(DocX document, List<Model.CodigoVia> codigoVias, SqlRepository repository)
+        {
+            
+            List<Model.UspGetReporteInspeccionTablaHistamina> viaResultado = repository.ObtenerTablaHistamina<Model.UspGetReporteInspeccionTablaHistamina>(81531, 3).ToList();
+            List<Model.Via> vias = repository.ObtenerVias<Model.Via>(81531, 3, 1).ToList();
+            
+            int cabeceraFilas = 4;
+            int cabeceraColumnas = 7;
+
+            int tablaFilas = cabeceraFilas + (codigoVias.Count * 5); // El usuario indica que siempre van a tener 5 filas
+            int tablaColumnas = cabeceraColumnas;
+            
+            Table tabla = document.AddTable(tablaFilas, tablaColumnas);
+            tabla.Alignment = Alignment.left;
+            
+            // Titulo
+            
+            AgregarTitulo(tabla, "INSPECCIÓN DE LOTES POR MUESTREO (CARACTERÍSTICAS QUÍMICAS) - PERÚ Y OTROS PAÍSES:  NUMERAL 1.2.9.1");
+            
+            // Encabezado
+            
+            // Ancho de columnas
+            
+            int[] columnWidths = { 20, 25, 20, 150, 150, 100, 60 };
+            
+            for (int i = 0; i < tablaColumnas; i++)
+            {
+                tabla.SetColumnWidth(i, columnWidths[i]);
+            }
+            
+            // Combinar filas
+            
+            tabla.MergeCellsInColumn(0, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(1, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(2, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(5, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(6, 2, cabeceraFilas - 1);
+            // tabla.MergeCellsInColumn(tabla.ColumnCount - 1, 2, cabeceraFilas - 1); // Ùltima columnna
+            
+            tabla.Rows[0].MergeCells(0, tabla.ColumnCount - 1); // Titulo
+            
+            // Histamina
+            
+            tabla.Rows[1].MergeCells(0, tabla.Rows[1].Cells.Count - 1);
+            FormatTableCell(tabla.Rows[1].Cells[0], "HISTAMINA", 7, true, Alignment.center, true);
+            
+            // Código
+
+            tabla.Rows[2].Height = 80;
+            tabla.Rows[3].Height = 20;
+            FormatTableCell(tabla.Rows[2].Cells[0], "CODIGO", 7, true, Alignment.center, true, TextDirection.btLr);
+            
+            // Vías (n)
+            
+            FormatTableCell(tabla.Rows[2].Cells[1], "VIAS (n)", 7, true, Alignment.center);
+            
+            // Tolerancia
+            
+            FormatTableCell(tabla.Rows[2].Cells[2], "TOLERANCIA", 7, true, Alignment.center, true, TextDirection.btLr);
+            
+            // Limites de tolerancia
+            
+            tabla.Rows[2].MergeCells(3, 4);
+            
+            var celda = tabla.Rows[2].Cells[3];
+            var parrafo = celda.Paragraphs.First();
+            
+            parrafo.Append("LÍMITES DE TOLERANCIA (ppm)").FontSize(6).Font("Calibri (Cuerpo)").Bold();
+            parrafo.Append("1").Script(Script.superscript).FontSize(8).Font("Calibri (Cuerpo)").Bold();
+
+            parrafo.Alignment = Alignment.center;
+            celda.FillColor = Color.FromArgb(234, 241, 221);
+            celda.VerticalAlignment = VerticalAlignment.Center;
+            
+            // FormatTableCell(tabla.Rows[2].Cells[3], "LIMITES DE TOLERANCIA (ppm)1", 7, true, Alignment.center);
+            FormatTableCell(tabla.Rows[3].Cells[3], "m", 7, true, Alignment.center);
+            FormatTableCell(tabla.Rows[3].Cells[4], "M", 7, true, Alignment.center);
+            
+            // Resultados
+            
+            FormatTableCell(tabla.Rows[2].Cells[4], "RESULTADOS (mm Hg)", 7, true, Alignment.center);
+            
+            // Conclusion
+            
+            FormatTableCell(tabla.Rows[2].Cells[5], "CONCLUSIÓN", 7, true, Alignment.center);
+            
+            // Muestras
+            
+            for (int i = 0, inicioVias = cabeceraFilas; i < codigoVias.Count; i++, inicioVias += 5)
+            {
+                
+                string codigoInterno = codigoVias[i].CodigoInterno;
+                FormatTableCell(tabla.Rows[inicioVias].Cells[0], codigoInterno, 5, true, Alignment.center, false);
+                
+                tabla.MergeCellsInColumn(0, inicioVias, inicioVias + 4);
+                tabla.MergeCellsInColumn(2, inicioVias, inicioVias + 4);
+                tabla.MergeCellsInColumn(3, inicioVias, inicioVias + 4);
+                tabla.MergeCellsInColumn(4, inicioVias, inicioVias + 4);
+                tabla.MergeCellsInColumn(6, inicioVias, inicioVias + 4);
+
+                FormatTableCell(tabla.Rows[inicioVias].Cells[3], "100", 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[inicioVias].Cells[4], "200", 6, false, Alignment.center, false);
+                
+                // Vias
+
+                for (int j = 0; j < 5; j++) 
+                {
+                    FormatTableCell(tabla.Rows[inicioVias + j].Cells[1], (j + 1).ToString(), 6, false, Alignment.center, false);
+                }
+                
+            }
+
+            AgregarDescripcion(tabla, "1ppm = 1mg/kg");
+            
+            // Guardar
+
+            document.InsertTable(tabla);
+            
+        }
+        
+        public static void CrearTablaMetalesPesados(DocX document, List<Model.CodigoVia> codigoVias, SqlRepository repository)
+        {
+
+            List<Model.Ensayo> analisis = repository.ObtenerEnsayos<Model.Ensayo>(81531, 1, 3).ToList();
+            List<Model.ViaResultado> viaResultado = repository.ViasResultados<Model.ViaResultado>(81531, 3).ToList();
+            
+            // Obtener los ensayos a excepción de histamina
+            
+            analisis = analisis.Where(e => e.Analisis != "Histamina").ToList();
+            
+            int cabeceraFilas = 3;
+            int cabeceraColumnas = 7;
+
+            int tablaFilas = cabeceraFilas + analisis.Count;
+            int tablaColumnas = cabeceraColumnas;
+            
+            Table tabla = document.AddTable(tablaFilas, tablaColumnas);
+            tabla.Alignment = Alignment.left;
+            
+            // Titulo
+            
+            AgregarTitulo(tabla, "INSPECCIÓN DE LOTES POR MUESTREO (CARACTERÍSTICAS QUÍMICAS) - PERÚ Y OTROS PAÍSES:  NUMERAL 1.3.2.1-TABLA N°06");
+            
+            // Encabezado
+            
+            // Ancho de columnas
+            
+            int[] anchoColumnas = { 60, 80, 80, 100, 60, 60, 60 };
+            
+            for (int i = 0; i < tablaColumnas; i++)
+            {
+                tabla.SetColumnWidth(i, anchoColumnas[i]);
+            }
+            
+            // Combinar filas
+            
+            // tabla.MergeCellsInColumn(0, 2, cabeceraFilas - 1);
+            // tabla.MergeCellsInColumn(1, 2, cabeceraFilas - 1);
+            // tabla.MergeCellsInColumn(2, 2, cabeceraFilas - 1);
+            // tabla.MergeCellsInColumn(5, 2, cabeceraFilas - 1);
+            // tabla.MergeCellsInColumn(6, 2, cabeceraFilas - 1);
+            // tabla.MergeCellsInColumn(tabla.ColumnCount - 1, 2, cabeceraFilas - 1); // Ùltima columnna
+            
+            tabla.Rows[0].MergeCells(0, tabla.ColumnCount - 1); // Titulo
+            
+            // Metales pesados
+            
+            tabla.Rows[1].MergeCells(0, tabla.Rows[1].Cells.Count - 1);
+            FormatTableCell(tabla.Rows[1].Cells[0], "METALES PESADOS", 7, true, Alignment.center);
+            
+            // Analisis
+
+            FormatTableCell(tabla.Rows[2].Cells[0], "ANÁLISIS", 7, true, Alignment.center);
+            
+            // Vías (n)
+            
+            FormatTableCell(tabla.Rows[2].Cells[1], "CÓDIGOS", 7, true, Alignment.center);
+            
+            // Vias
+            
+            FormatTableCell(tabla.Rows[2].Cells[2], "VÍAS", 7, true, Alignment.center);
+            
+            // Contenido maximo
+            
+            FormatTableCell(tabla.Rows[2].Cells[3], "CONTENIDO MAXIMO (MG/KG PESO FRESCO)", 7, true, Alignment.center);
+            
+            // Unidades
+            
+            FormatTableCell(tabla.Rows[2].Cells[4], "UNIDADES", 7, true, Alignment.center);
+            
+            // Resultado
+            
+            FormatTableCell(tabla.Rows[2].Cells[5], "RESULTADO", 7, true, Alignment.center);
+            
+            // Conclusion
+            
+            FormatTableCell(tabla.Rows[2].Cells[6], "CONCLUSION", 7, true, Alignment.center);
+            
+            
+            tabla.MergeCellsInColumn(1, cabeceraFilas, tabla.RowCount - 1);
+            tabla.MergeCellsInColumn(2, cabeceraFilas, tabla.RowCount - 1);
+            tabla.MergeCellsInColumn(tabla.ColumnCount - 1, cabeceraFilas, tabla.RowCount - 1);
+            
+            // Codigo
+            
+            string codigoConcatenado = string.Join("\n ", codigoVias.Select(via => via.CodigoInterno));
+                
+            FormatTableCell(tabla.Rows[3].Cells[1], codigoConcatenado, 6, true, Alignment.center, false);
+            FormatTableCell(tabla.Rows[3].Cells[2], "1", 6, false, Alignment.center, false);
+            
+            // Muestras
+            
+            for (int i = 0, inicioAnalisis = cabeceraFilas; i < analisis.Count; i++, inicioAnalisis++)
+            {
+                
+                string analisisLabel = analisis[i].Analisis;
+                string unidadMedida = analisis[i].UnidadMedida;
+                
+                FormatTableCell(tabla.Rows[inicioAnalisis].Cells[0], analisisLabel, 5, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[inicioAnalisis].Cells[4], unidadMedida, 5, false, Alignment.center, false);
+                
+                string resultado = viaResultado.Find(r => r.CodPrecinto == "M1" && r.Muestra == "n1" && r.IdAnalisis == analisis[i].IdAnalisis).Resultado;
+
+                if (resultado is null) resultado = "0";
+                
+                FormatTableCell(tabla.Rows[inicioAnalisis].Cells[5], resultado, 5, false, Alignment.center, false);
+
+            }
+            
+            tabla.Rows.Last().Remove();
+
+            // Guardar
+
+            document.InsertTable(tabla);
+            
+        }
+        
+        public static void CrearTablaExtensionesSensoriales(DocX document, List<Model.CodigoVia> codigoVias, SqlRepository repository)
+        {
+            
+            List<Model.UspGetTablaExamenesSensoriales> tablaResultados =
+                repository.ObtenerTablaExamenesSensorial<Model.UspGetTablaExamenesSensoriales>(81531, 1).ToList();
+
+            if (tablaResultados.Count == 0)
+            {
+                throw new Exception("No se encontraron resultados para la tabla de extensiones sensoriales.");
+            }
+            
+            int cabeceraFilas = 4;
+            int cabeceraColumnas = 11;
+
+            int tablaFilas = cabeceraFilas + codigoVias.Count;
+            int tablaColumnas = cabeceraColumnas;
+            
+            Table tabla = document.AddTable(tablaFilas, tablaColumnas);
+            tabla.Alignment = Alignment.left;
+            
+            // Titulo
+            
+            AgregarTitulo(tabla, "INSPECCIÓN DE LOTES POR MUESTREO (CARACTERÍSTICAS FÍSICO-SENSORIALES). ÍTEMS: 4.1.1; 4.1.8; 4.1.9; 4.1.10 Y 4.1.11");
+            
+            // Encabezado
+            
+            // Ancho de columnas
+            
+            int[] columnWidths = { 50, 50, 30, 30, 40, 40, 55, 55, 55, 55, 55 };
+            
+            for (int i = 0; i < tablaColumnas; i++)
+            {
+                tabla.SetColumnWidth(i, columnWidths[i]);
+            }
+            
+            // Combinar filas
+            
+            tabla.MergeCellsInColumn(0, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(1, 2, cabeceraFilas - 1);
+            
+            tabla.MergeCellsInColumn(6, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(7, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(8, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(9, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(tabla.ColumnCount - 1, 2, cabeceraFilas - 1); // Ùltima columnna
+            
+            tabla.Rows[0].MergeCells(0, tabla.ColumnCount - 1); // Titulo
+            
+            // Examenes sensoriales
+            
+            tabla.Rows[1].MergeCells(0, tabla.Rows[1].Cells.Count - 1);
+            FormatTableCell(tabla.Rows[1].Cells[0], "EXAMENES SENSORIALES", 7, true, Alignment.center);
+            
+            // Codigo
+
+            FormatTableCell(tabla.Rows[2].Cells[0], "CÓDIGO", 7, true, Alignment.center);
+            
+            // Vías (n)
+            
+            FormatTableCell(tabla.Rows[2].Cells[1], "VÍAS (n)", 7, true, Alignment.center);
+            
+            // Numero de aceptacion
+
+            tabla.Rows[2].MergeCells(2, 3);
+            FormatTableCell(tabla.Rows[2].Cells[2], "NÚMERO DE ACEPTACIÓN", 7, true, Alignment.center);
+            FormatTableCell(tabla.Rows[3].Cells[2], "N°", 7, true, Alignment.center);
+            FormatTableCell(tabla.Rows[3].Cells[3], "(c)*", 7, true, Alignment.center);
+            
+            // Aspecto
+            
+            tabla.Rows[2].MergeCells(3, 4);
+            FormatTableCell(tabla.Rows[2].Cells[3], "ASPECTO", 7, true, Alignment.center);
+            FormatTableCell(tabla.Rows[3].Cells[4], "EXTERIOR", 7, true, Alignment.center);
+            FormatTableCell(tabla.Rows[3].Cells[5], "INTERIOR", 7, true, Alignment.center);
+            
+            // Olor
+            
+            FormatTableCell(tabla.Rows[2].Cells[4], "OLOR", 7, true, Alignment.center);
+            
+            // Color
+            
+            FormatTableCell(tabla.Rows[2].Cells[5], "COLOR", 7, true, Alignment.center);
+            
+            // Sabor
+            
+            FormatTableCell(tabla.Rows[2].Cells[6], "SABOR", 7, true, Alignment.center);
+            
+            // Textura
+            
+            FormatTableCell(tabla.Rows[2].Cells[7], "TEXTURA", 7, true, Alignment.center);
+            
+            // conclusion
+            
+            FormatTableCell(tabla.Rows[2].Cells[8], "CONCLUSION", 7, true, Alignment.center);
+            
+            
+            // Muestras
+            
+            for (int i = 0, inicioVias = cabeceraFilas; i < codigoVias.Count; i++, inicioVias++)
+            {
+                string codigoInterno = codigoVias[i].CodigoInterno;
+                FormatTableCell(tabla.Rows[inicioVias].Cells[0], codigoInterno, 5, true, Alignment.center, false);
+                
+                // Vias
+
+                var resultado = tablaResultados.FirstOrDefault(x => x.Codigos == codigoVias[i].CodigoInterno);
+
+                if (resultado != null)
+                {
+                    
+                    // TODO: Hacer una revisión para verificar si existe un no conforme en las vias
+                    
+                    // Vias
+                    
+                    FormatTableCell(tabla.Rows[inicioVias].Cells[1], resultado.RangoVias, 6, false, Alignment.center, false);
+                    
+                    // Exterior
+                    
+                    FormatTableCell(tabla.Rows[inicioVias].Cells[4], resultado.EnvaseExterno, 6, false, Alignment.center, false);
+                    
+                    // Interior
+                    
+                    FormatTableCell(tabla.Rows[inicioVias].Cells[5], resultado.EnvaseInterno, 6, false, Alignment.center, false);
+                    
+                    // Olor
+                    
+                    FormatTableCell(tabla.Rows[inicioVias].Cells[6], resultado.Olor, 6, false, Alignment.center, false);
+                    
+                    // Color
+                    
+                    FormatTableCell(tabla.Rows[inicioVias].Cells[7], resultado.Color, 6, false, Alignment.center, false);
+                    
+                    // Sabor
+                    
+                    FormatTableCell(tabla.Rows[inicioVias].Cells[8], resultado.Sabor, 6, false, Alignment.center, false);
+                    
+                    // Textura
+                    
+                    FormatTableCell(tabla.Rows[inicioVias].Cells[9], resultado.Textura, 6, false, Alignment.center, false);
+                    
+                }
+                
+            }
+            
+            AgregarDescripcion( tabla, "(*) El paréntesis en el número de aceptación (c) indica el número de aceptación para descomposición \n Nota: M1(n10): Sabor/ No Conforme/ Ligeramente picante asociado a histamina");
+            
+            // Guardar
+
+            document.InsertTable(tabla);
+            
+        }
         
         private static void FormatTableCell(Cell cell, string text, int fontSize, bool isBold, Alignment alignment, bool setColor = true, TextDirection textDirection = TextDirection.right )
         {
@@ -1376,6 +2113,143 @@ namespace XCeedWordInspeccion
                 i = j;
             }
         }
+        
+        public static void CrearTablaEsterilidadComercial(DocX document, List<Model.Ensayo> ensayos, List<Model.CodigoVia> codigoVias, List<Model.ViaResultado> viaResultados)
+        {
+            int cabeceraFilas = 4;
+            int cabeceraColumnas = 12;
+
+            int tablaFilas = cabeceraFilas + codigoVias.Count;
+            int tablaColumnas = cabeceraColumnas;
+            
+            Table tabla = document.AddTable(tablaFilas, tablaColumnas);
+            tabla.Alignment = Alignment.left;
+            
+            // Agregar titulo
+            
+            AgregarTitulo(tabla, "INSPECCIÓN DE LOTES POR MUESTREO (CARACTERÍSTICAS MICROBIOLÓGICAS) - PERÚ Y OTROS PAÍSES. NUMERAL 1.2.8");
+            
+            // Encabezado
+            
+            // Ancho de columnas
+            
+            int[] anchoColumnas = { 80, 22, 22, 60, 60, 35, 35, 35, 35, 35, 35, 60 };
+            
+            for (int i = 0; i < tablaColumnas; i++)
+            {
+                tabla.SetColumnWidth(i, anchoColumnas[i]);
+            }
+            
+            // Combinar filas
+            
+            tabla.MergeCellsInColumn(0, 2, cabeceraFilas - 1);
+            
+            tabla.MergeCellsInColumn(3, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(4, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(5, 2, cabeceraFilas - 1);
+            tabla.MergeCellsInColumn(tabla.ColumnCount - 1, 2, cabeceraFilas - 1);
+            
+            tabla.Rows[0].MergeCells(0, tabla.ColumnCount - 1); // Titulo
+            
+            // Esterilidad comercial
+            
+            tabla.Rows[1].MergeCells(0, tabla.Rows[1].Cells.Count - 1);
+            FormatTableCell(tabla.Rows[1].Cells[0], "ESTERILIDAD COMERCIAL", 7, true, Alignment.center);
+            
+            // Analisis
+
+            tabla.Rows[2].Height = 20;
+            tabla.Rows[3].Height = 10;
+            FormatTableCell(tabla.Rows[2].Cells[0], "ANALISIS", 7, true, Alignment.center);
+            
+            // Plan de evaluación
+            
+            tabla.Rows[2].MergeCells(1, 2);
+            FormatTableCell(tabla.Rows[2].Cells[1], "PLAN DE EVALUACIÓN", 6, true, Alignment.center);
+            
+            FormatTableCell(tabla.Rows[3].Cells[1], "n", 7, true, Alignment.center);
+            FormatTableCell(tabla.Rows[3].Cells[2], "c", 7, true, Alignment.center);
+            
+            // Aceptación
+            
+            FormatTableCell(tabla.Rows[2].Cells[2], "ACEPTACIÓN", 7, true, Alignment.center);
+            
+            // Rechazo
+            
+            FormatTableCell(tabla.Rows[2].Cells[3], "RECHAZO", 7, true, Alignment.center);
+            
+            // Código
+            
+            FormatTableCell(tabla.Rows[2].Cells[4], "CÓDIGO", 7, true, Alignment.center);
+            
+            // Número de Vías (Dinámicas)
+            
+            tabla.Rows[2].MergeCells(5, 9);
+            FormatTableCell(tabla.Rows[2].Cells[5], "NÚMERO DE VÍAS", 7, true, Alignment.center);
+            
+            // Recordar que el usuario indico que las 5 vias son fijas, por lo que no es necesario hacer un bucle dinámico para las vias
+            
+            FormatTableCell(tabla.Rows[3].Cells[6], "n1", 7, true, Alignment.center);
+            FormatTableCell(tabla.Rows[3].Cells[7], "n2", 7, true, Alignment.center);
+            FormatTableCell(tabla.Rows[3].Cells[8], "n3", 7, true, Alignment.center);
+            FormatTableCell(tabla.Rows[3].Cells[9], "n4", 7, true, Alignment.center);
+            FormatTableCell(tabla.Rows[3].Cells[10], "n5", 7, true, Alignment.center);
+            
+            // Conclusión
+            
+            FormatTableCell(tabla.Rows[2].Cells[tabla.Rows[2].Cells.Count - 1], "CONCLUSIÓN", 7, true, Alignment.center);
+            
+            // Ensayos
+            
+            for (int i = 0; i < codigoVias.Count; i++)
+            {
+
+                string ensayo = ensayos[0].Analisis; // REVIEW: ¿Por qué siempre se usa el primer ensayo? ¿No debería ser dinámico?
+                string codigoInterno = codigoVias[i].CodigoInterno;
+                
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[0], ensayo, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[1], "5", 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[2], "0", 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[3], "Estéril comercialmente", 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[4], "No estéril comercialmente", 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[5], codigoInterno, 6, true, Alignment.center, false);
+
+                // Resultado por cada ensayo
+                
+                int inicioVias = 6; // Las vias empiezan en la columna 6
+                
+                string[] resultados = new string[5];
+
+                for (int k = 0, nvia = 1; k < 5; k++, nvia++)
+                {
+                    string via = "n" + nvia;
+
+                    string resultado = viaResultados.Find(r => r.CodPrecinto == codigoInterno && r.Muestra == via)
+                        .Resultado;
+
+                    if (resultado is null) resultado = "0";
+                    
+                    resultados[k] = resultado;
+                    
+                    FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[inicioVias + k], resultado, 6, false, Alignment.center, false);
+                    
+                }
+
+                string conclusion = resultados.Any(r => r != "Estéril") ? "No conforme" : "Conforme";
+
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[tabla.ColumnCount - 1], conclusion, 6, false, Alignment.center, false);
+                
+            }
+            
+            // Si no hay descripción eliminamos la ultima fila
+            
+            tabla.Rows.Last().Remove();
+            
+            // Guardar
+            
+            document.InsertTable(tabla);
+            
+        }
 
         private static void AgregarTitulo(Table table, string titulo)
         {
@@ -1405,6 +2279,22 @@ namespace XCeedWordInspeccion
             lastRow.Cells[0].SetBorder(TableCellBorderType.Right, new Border(BorderStyle.Tcbs_none, 0, 0, Color.Transparent));
             
             FormatTableCell(lastRow.Cells[0], descripcion, 6, false, alignment, false);
+        }
+        
+        private static string FormatearResultadoNumerico(string valor)
+        {
+            // Usamos CultureInfo.InvariantCulture para asegurarnos de que el punto "."
+            // siempre se reconozca como el separador decimal, sin importar la configuración del servidor.
+            if (Decimal.TryParse(valor, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal numero))
+            {
+                // "G29" es un especificador de formato estándar que significa "formato general"
+                // y es la forma más segura de eliminar los ceros finales sin perder precisión.
+                return numero.ToString("G29", CultureInfo.InvariantCulture);
+            }
+
+            // Si el valor no se puede convertir a número (ej. es "N/A" o texto),
+            // simplemente devolvemos el valor original sin cambios.
+            return valor;
         }
         
     }

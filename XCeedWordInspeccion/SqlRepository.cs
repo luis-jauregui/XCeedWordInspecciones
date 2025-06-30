@@ -106,5 +106,52 @@ namespace XCeedWordInspeccion
             }
         }
         
+        
+        public IEnumerable<T> ObtenerTablaEvaluacion<T>(int idOt, int correlativo)
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string storedProcedure = "sp_get_TablaEvaluacionDobleCierre"; // Nombre del procedimiento almacenado
+        
+                return connection.Query<T>(
+                    storedProcedure,
+                    new { IdOt = idOt, Correlativo = correlativo },
+                    commandType: CommandType.StoredProcedure // Indicar que es un SP
+                );
+            }
+        }
+        
+        public IEnumerable<T> ObtenerTablaExamenesSensorial<T>(int idOt, int correlativo)
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string storedProcedure = "usp_get_TablaExamenesSensoriales"; // Nombre del procedimiento almacenado
+        
+                return connection.Query<T>(
+                    storedProcedure,
+                    new { IdOt = idOt, Correlativo = correlativo },
+                    commandType: CommandType.StoredProcedure // Indicar que es un SP
+                );
+            }
+        }
+        
+        
+        public IEnumerable<T> ObtenerTablaHistamina<T>(int idOt, int correlativo)
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string storedProcedure = "usp_get_ReporteInspeccion_TablaHistamina"; // Nombre del procedimiento almacenado
+        
+                return connection.Query<T>(
+                    storedProcedure,
+                    new { IdOt = idOt, Correlativo = correlativo },
+                    commandType: CommandType.StoredProcedure // Indicar que es un SP
+                );
+            }
+        }
+        
     }
 }
