@@ -30,6 +30,13 @@
             public string Vias { get; set; }
             public string CodigoInterno { get; set; }
         }
+        
+        public class CodigoViaFisicoSensorial
+        {
+            public int IdProducto { get; set; }
+            public string Codigos { get; set; }
+            public string RangoVias { get; set; }
+        }
 
         public class Via
         {
@@ -153,6 +160,7 @@
             public int IdAnalisis { get; set; }
             public string UnidMedida { get; set; }
             public string Resultado { get; set; }
+            public int NroVia { get; set; }
             public string CodPrecinto { get; set; }
             public string Muestra { get; set; }
             public string CodigoInterno { get; set; }

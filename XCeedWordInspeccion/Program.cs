@@ -60,15 +60,15 @@ namespace XCeedWordInspeccion
                 
                 CrearTablaEsterilidadComercial(document, ensayos, codigoVias, viaResultado);
                 document.InsertParagraph().SpacingAfter(10);
-                CrearTablaIndicadoresParasitologicos(document, codigoVias);
+                CrearTablaIndicadoresParasitologicos(document, repository);
                 document.InsertParagraph().SpacingAfter(10);
-                CrearTablaEvaluacionDobleCierre(document, codigoVias, repository);
+                CrearTablaEvaluacionDobleCierre(document, repository);
                 document.InsertParagraph().SpacingAfter(10);
-                CrearTablaDeterminacionVacia(document, codigoVias, repository);
+                CrearTablaDeterminacionPresionVacio(document, repository);
                 document.InsertParagraph().SpacingAfter(10);
-                CrearTablaHistamina(document, codigoVias, repository);
+                CrearTablaHistamina(document, repository);
                 document.InsertParagraph().SpacingAfter(10);
-                CrearTablaMetalesPesados(document, codigoVias, repository);
+                CrearTablaMetalesPesados(document, repository);
                 document.InsertParagraph().SpacingAfter(10);
                 CrearTablaExtensionesSensoriales(document, codigoVias, repository);
                 
@@ -1078,11 +1078,17 @@ namespace XCeedWordInspeccion
             document.InsertTable(table);
         }
         
-        public static void CrearTablaEvaluacionDobleCierre(DocX document, List<Model.CodigoVia> codigoVias, SqlRepository repository)
+        public static void CrearTablaEvaluacionDobleCierre(DocX document, SqlRepository repository)
         {
             
-            List<Model.SpGetTablaEvaluacionDobleCierre> tablaResultados =
+            // TODO: obtener vias de sensoriales
+            List<Model.CodigoViaFisicoSensorial> codigoVias = repository.ObtenerCodigoViasFisicoSensorial<Model.CodigoViaFisicoSensorial>(81531, 1).ToList();
+            
+            List<Model.SpGetTablaEvaluacionDobleCierre> resultados =
                 repository.ObtenerTablaEvaluacion<Model.SpGetTablaEvaluacionDobleCierre>(81531, 1).ToList();
+            
+            List<Model.UspGetTablaExamenesSensoriales> examenesSensoriales =
+                repository.ObtenerTablaExamenesSensorial<Model.UspGetTablaExamenesSensoriales>(81531, 1).ToList();
             
             int cabeceraFilas = 4;
             // int cabeceraColumnas = 13;
@@ -1290,7 +1296,7 @@ namespace XCeedWordInspeccion
             for (int i = 0, inicioVias = cabeceraFilas; i < codigoVias.Count; i++, inicioVias += 5)
             {
                 
-                string codigoInterno = codigoVias[i].CodigoInterno;
+                string codigoInterno = codigoVias[i].Codigos;
                 FormatTableCell(tabla.Rows[inicioVias].Cells[0], codigoInterno, 5, true, Alignment.center, false);
                 
                 tabla.MergeCellsInColumn(0, inicioVias, inicioVias + 4);
@@ -1309,12 +1315,24 @@ namespace XCeedWordInspeccion
                 {
                     FormatTableCell(tabla.Rows[inicioVias + j].Cells[1], (j + 1).ToString(), 6, false, Alignment.center, false);
 
-                    if (tablaResultados.Count > 0)
+                    if (resultados.Count > 0)
                     {
-                        var resultado = tablaResultados.FirstOrDefault(x => x.Codigos == codigoVias[i].CodigoInterno && x.Vias == j + 1);
+                        var resultado = resultados.FirstOrDefault(x => x.Codigos == codigoVias[i].Codigos && x.Vias == j + 1);
+                        var resultadoExamenSensorial = examenesSensoriales.FirstOrDefault(x => x.Codigos == codigoVias[i].Codigos && x.Vias == j + 1);
                         
                         if (resultado != null)
                         {
+                            // Ganchos de cuerpo y tapa
+                            
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[3], resultadoExamenSensorial.EnvaseInterno, 5, false, Alignment.center, false);
+                            
+                            // Borde superior e inferior del doble cierre
+                            
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[4], resultadoExamenSensorial.EnvaseExterno, 5, false, Alignment.center, false);
+                            
+                            // Compuesto sellador
+                            
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[5], resultadoExamenSensorial.EnvaseInterno, 5, false, Alignment.center, false);
                             
                             // Compacidad
                             
@@ -1463,8 +1481,10 @@ namespace XCeedWordInspeccion
         }
         
         
-        public static void CrearTablaIndicadoresParasitologicos(DocX document, List<Model.CodigoVia> codigoVias)
+        public static void CrearTablaIndicadoresParasitologicos(DocX document, SqlRepository repository)
         {
+            List<Model.CodigoViaFisicoSensorial> codigoVias = repository.ObtenerCodigoViasFisicoSensorial<Model.CodigoViaFisicoSensorial>(81531, 1).ToList();
+            
             int cabeceraFilas = 3;
             int cabeceraColumnas = 5;
 
@@ -1521,8 +1541,8 @@ namespace XCeedWordInspeccion
             
             for (int i = 0, inicioVias = cabeceraFilas; i < codigoVias.Count; i++, inicioVias++)
             {
-                string codigoInterno = codigoVias[i].CodigoInterno;
-                string rangoVias = codigoVias[i].Vias;
+                string codigoInterno = codigoVias[i].Codigos;
+                string rangoVias = codigoVias[i].RangoVias;
                 FormatTableCell(tabla.Rows[inicioVias].Cells[0], codigoInterno, 6, true, Alignment.center, false);
                 FormatTableCell(tabla.Rows[inicioVias].Cells[1], rangoVias, 6, false, Alignment.center, false);
                 FormatTableCell(tabla.Rows[inicioVias].Cells[2], "Ausencia de parásitos visibles", 6, false, Alignment.center, false);
@@ -1536,8 +1556,13 @@ namespace XCeedWordInspeccion
         }
         
         
-        public static void CrearTablaDeterminacionVacia(DocX document, List<Model.CodigoVia> codigoVias, SqlRepository repository)
+        public static void CrearTablaDeterminacionPresionVacio(DocX document, SqlRepository repository)
         {
+            List<Model.UspGetTablaExamenesSensoriales> tablaResultados =
+                repository.ObtenerTablaExamenesSensorial<Model.UspGetTablaExamenesSensoriales>(81531, 1).ToList();
+            
+            List<Model.CodigoViaFisicoSensorial> codigoVias = repository.ObtenerCodigoViasFisicoSensorial<Model.CodigoViaFisicoSensorial>(81531, 1).ToList();
+            
             int cabeceraFilas = 3;
             int cabeceraColumnas = 6;
 
@@ -1608,7 +1633,7 @@ namespace XCeedWordInspeccion
             for (int i = 0, inicioVias = cabeceraFilas; i < codigoVias.Count; i++, inicioVias += 5)
             {
                 
-                string codigoInterno = codigoVias[i].CodigoInterno;
+                string codigoInterno = codigoVias[i].Codigos;
                 FormatTableCell(tabla.Rows[inicioVias].Cells[0], codigoInterno, 5, true, Alignment.center, false);
                 
                 tabla.MergeCellsInColumn(0, inicioVias, inicioVias + 4);
@@ -1630,37 +1655,12 @@ namespace XCeedWordInspeccion
 
                 for (int j = 0; j < 5; j++) 
                 {
-                    
                     // Vias
-                    
                     FormatTableCell(tabla.Rows[inicioVias + j].Cells[1], (j + 1).ToString(), 6, false, Alignment.center, false);
-                    
-                    // Resultados
-                    
-                    // if (tablaResultados.Count > 0)
-                    // {
-                    //     var resultado = tablaResultados.FirstOrDefault(x => x.Codigos == codigoVias[i].CodigoInterno && x.Vias == j + 1);
-                    //     
-                    //     if (resultado != null)
-                    //     {
-                    //         
-                    //         // Compacidad
-                    //         
-                    //         FormatTableCell(tabla.Rows[inicioVias + j].Cells[6], resultado.Compacidad1, 5, false, Alignment.center, false);
-                    //         FormatTableCell(tabla.Rows[inicioVias + j].Cells[7], resultado.Compacidad2, 5, false, Alignment.center, false);
-                    //         FormatTableCell(tabla.Rows[inicioVias + j].Cells[8], resultado.Compacidad3, 5, false, Alignment.center, false);
-                    //         
-                    //     }
-                    //     else
-                    //     {
-                    //         FormatTableCell(tabla.Rows[inicioVias + j].Cells[4], "N/A", 6, false, Alignment.center, false);
-                    //     }
-                    // }
-                    // else
-                    //
-                    //     FormatTableCell(tabla.Rows[inicioVias + j].Cells[4], "N/A", 6, false, Alignment.center, false);
-                    // }
-                    
+                    // Resulados
+                    string resultado = tablaResultados.Find(r => r.Codigos == codigoInterno && r.Vias == j + 1).PresionDeVacioMmHg;
+                    if (resultado is null) resultado = "0";
+                    FormatTableCell(tabla.Rows[inicioVias + j].Cells[4], resultado, 6, false, Alignment.center, false);
                 }
                 
             }
@@ -1673,16 +1673,25 @@ namespace XCeedWordInspeccion
             
         }
         
-        public static void CrearTablaHistamina(DocX document, List<Model.CodigoVia> codigoVias, SqlRepository repository)
+        public static void CrearTablaHistamina(DocX document, SqlRepository repository)
         {
+            List<Model.UspGetReporteInspeccionTablaHistamina> tablaResultados =
+                repository.ObtenerTablaHistamina<Model.UspGetReporteInspeccionTablaHistamina>(81531, 3).ToList();
             
-            List<Model.UspGetReporteInspeccionTablaHistamina> viaResultado = repository.ObtenerTablaHistamina<Model.UspGetReporteInspeccionTablaHistamina>(81531, 3).ToList();
-            List<Model.Via> vias = repository.ObtenerVias<Model.Via>(81531, 3, 1).ToList();
+            // Obtener los codigos de vias de la tabla de resultados 
+
+            List<string> codigoVias = tablaResultados
+                .Select(x => x.CodPrecinto) // Selecciona solo la propiedad CodPrecinto
+                .Distinct() // Elimina duplicados para obtener valores únicos
+                .OrderBy(x => x) // Ordena los valores alfabéticamente de forma ascendente
+                .ToList(); // Convierte el resultado en una List<string>
+            
+            int NUMERO_VIAS = 9; // El usuario indica que siempre van a tener 5 filas
             
             int cabeceraFilas = 4;
             int cabeceraColumnas = 7;
 
-            int tablaFilas = cabeceraFilas + (codigoVias.Count * 5); // El usuario indica que siempre van a tener 5 filas
+            int tablaFilas = cabeceraFilas + (codigoVias.Count * NUMERO_VIAS);
             int tablaColumnas = cabeceraColumnas;
             
             Table tabla = document.AddTable(tablaFilas, tablaColumnas);
@@ -1731,7 +1740,7 @@ namespace XCeedWordInspeccion
             
             // Tolerancia
             
-            FormatTableCell(tabla.Rows[2].Cells[2], "TOLERANCIA", 7, true, Alignment.center, true, TextDirection.btLr);
+            FormatTableCell(tabla.Rows[2].Cells[2], "TOLERANCIA (c)", 7, true, Alignment.center, true, TextDirection.btLr);
             
             // Limites de tolerancia
             
@@ -1761,26 +1770,33 @@ namespace XCeedWordInspeccion
             
             // Muestras
             
-            for (int i = 0, inicioVias = cabeceraFilas; i < codigoVias.Count; i++, inicioVias += 5)
+            for (int i = 0, inicioVias = cabeceraFilas; i < codigoVias.Count; i++, inicioVias += NUMERO_VIAS)
             {
                 
-                string codigoInterno = codigoVias[i].CodigoInterno;
+                string codigoInterno = codigoVias[i];
                 FormatTableCell(tabla.Rows[inicioVias].Cells[0], codigoInterno, 5, true, Alignment.center, false);
                 
-                tabla.MergeCellsInColumn(0, inicioVias, inicioVias + 4);
-                tabla.MergeCellsInColumn(2, inicioVias, inicioVias + 4);
-                tabla.MergeCellsInColumn(3, inicioVias, inicioVias + 4);
-                tabla.MergeCellsInColumn(4, inicioVias, inicioVias + 4);
-                tabla.MergeCellsInColumn(6, inicioVias, inicioVias + 4);
+                tabla.MergeCellsInColumn(0, inicioVias, inicioVias + NUMERO_VIAS - 1);
+                tabla.MergeCellsInColumn(2, inicioVias, inicioVias + NUMERO_VIAS - 1);
+                tabla.MergeCellsInColumn(3, inicioVias, inicioVias + NUMERO_VIAS - 1);
+                tabla.MergeCellsInColumn(4, inicioVias, inicioVias + NUMERO_VIAS - 1);
+                tabla.MergeCellsInColumn(6, inicioVias, inicioVias + NUMERO_VIAS - 1);
 
+                FormatTableCell(tabla.Rows[inicioVias].Cells[2], "2", 6, false, Alignment.center, false);
                 FormatTableCell(tabla.Rows[inicioVias].Cells[3], "100", 6, false, Alignment.center, false);
                 FormatTableCell(tabla.Rows[inicioVias].Cells[4], "200", 6, false, Alignment.center, false);
                 
                 // Vias
 
-                for (int j = 0; j < 5; j++) 
+                for (int j = 0; j < NUMERO_VIAS; j++) 
                 {
+                    // Via
                     FormatTableCell(tabla.Rows[inicioVias + j].Cells[1], (j + 1).ToString(), 6, false, Alignment.center, false);
+                    
+                    // Resultados
+                    
+                    string resultado = tablaResultados.Find(r => r.CodPrecinto == codigoInterno && r.NroVia == j + 1)?.Resultado ?? "0";
+                    FormatTableCell(tabla.Rows[inicioVias + j].Cells[5], resultado, 6, false, Alignment.center, false);
                 }
                 
             }
@@ -1793,11 +1809,16 @@ namespace XCeedWordInspeccion
             
         }
         
-        public static void CrearTablaMetalesPesados(DocX document, List<Model.CodigoVia> codigoVias, SqlRepository repository)
+        public static void CrearTablaMetalesPesados(DocX document, SqlRepository repository)
         {
-
             List<Model.Ensayo> analisis = repository.ObtenerEnsayos<Model.Ensayo>(81531, 1, 3).ToList();
-            List<Model.ViaResultado> viaResultado = repository.ViasResultados<Model.ViaResultado>(81531, 3).ToList();
+            List<Model.ViaResultado> tablaResultados = repository.ViasResultados<Model.ViaResultado>(81531, 3).ToList();
+            
+            List<string> codigoVias = tablaResultados
+                .Select(x => x.CodPrecinto) // Selecciona solo la propiedad CodPrecinto
+                .Distinct() // Elimina duplicados para obtener valores únicos
+                .OrderBy(x => x) // Ordena los valores alfabéticamente de forma ascendente
+                .ToList(); // Convierte el resultado en una List<string>
             
             // Obtener los ensayos a excepción de histamina
             
@@ -1878,7 +1899,7 @@ namespace XCeedWordInspeccion
             
             // Codigo
             
-            string codigoConcatenado = string.Join("\n ", codigoVias.Select(via => via.CodigoInterno));
+            string codigoConcatenado = string.Join("\n ", codigoVias.Select(via => via));
                 
             FormatTableCell(tabla.Rows[3].Cells[1], codigoConcatenado, 6, true, Alignment.center, false);
             FormatTableCell(tabla.Rows[3].Cells[2], "1", 6, false, Alignment.center, false);
@@ -1889,14 +1910,17 @@ namespace XCeedWordInspeccion
             {
                 
                 string analisisLabel = analisis[i].Analisis;
-                string unidadMedida = analisis[i].UnidadMedida;
                 
                 FormatTableCell(tabla.Rows[inicioAnalisis].Cells[0], analisisLabel, 5, false, Alignment.center, false);
-                FormatTableCell(tabla.Rows[inicioAnalisis].Cells[4], unidadMedida, 5, false, Alignment.center, false);
                 
-                string resultado = viaResultado.Find(r => r.CodPrecinto == "M1" && r.Muestra == "n1" && r.IdAnalisis == analisis[i].IdAnalisis).Resultado;
+                // Solo mostramos el primer codigo de via, ya que es donde se muestra en el Syslab
+                
+                string resultado = tablaResultados.Find(r => r.CodPrecinto == "M1" && r.Muestra == "n1" && r.IdAnalisis == analisis[i].IdAnalisis).Resultado;
+                string unidadMedida = tablaResultados.Find(r => r.CodPrecinto == "M1" && r.Muestra == "n1" && r.IdAnalisis == analisis[i].IdAnalisis).UnidMedida;
 
                 if (resultado is null) resultado = "0";
+                
+                FormatTableCell(tabla.Rows[inicioAnalisis].Cells[4], unidadMedida, 5, false, Alignment.center, false);
                 
                 FormatTableCell(tabla.Rows[inicioAnalisis].Cells[5], resultado, 5, false, Alignment.center, false);
 
