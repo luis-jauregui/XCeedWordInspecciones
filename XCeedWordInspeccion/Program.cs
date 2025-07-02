@@ -14,6 +14,8 @@ namespace XCeedWordInspeccion
     {
         
         private const int MAX_VIAS = 5;
+        private const int IdOT = 81445; // ID de la OT para pruebas
+        private const string NumOs = "250529.16"; // Número de OS para pruebas
         
         public static void Main(string[] args)
         {
@@ -26,14 +28,15 @@ namespace XCeedWordInspeccion
             using (DocX document = DocX.Load(filename))
             {
                 
+                
                 SqlRepository repository = new SqlRepository();
 
-                List<Model.Ensayo> ensayos = repository.ObtenerEnsayos<Model.Ensayo>(81531, 5, 2).ToList();
-                List<Model.Via> vias = repository.ObtenerVias<Model.Via>(81531, 2, 5).ToList();
-                List<Model.ViaResultado> viaResultado = repository.ViasResultados<Model.ViaResultado>(81531, 2).ToList();
-                List<Model.CodigoVia> codigoVias = repository.ObtenerCodigoVias<Model.CodigoVia>("250531.03").ToList();
-                List<Model.MuestraCls> muestras = repository.ObtenerMuestras<Model.MuestraCls>(81531, 2).ToList();
-                // Model.LoteCls lote = repository.ObtenerLote<Model.LoteCls > (81531);
+                List<Model.Ensayo> ensayos = repository.ObtenerEnsayos<Model.Ensayo>(IdOT, 5, 2).ToList();
+                List<Model.Via> vias = repository.ObtenerVias<Model.Via>(IdOT, 2, 5).ToList();
+                List<Model.ViaResultado> viaResultado = repository.ViasResultados<Model.ViaResultado>(IdOT, 2).ToList();
+                List<Model.CodigoVia> codigoVias = repository.ObtenerCodigoVias<Model.CodigoVia>(NumOs).ToList();
+                List<Model.MuestraCls> muestras = repository.ObtenerMuestras<Model.MuestraCls>(IdOT, 2).ToList();
+                // Model.LoteCls lote = repository.ObtenerLote<Model.LoteCls > (IdOT);
                 
                 // Configurar márgenes
                 
@@ -52,10 +55,11 @@ namespace XCeedWordInspeccion
                     .ToList();
                 
                 // Pero si mi codigo via es por ejemplo "M1", "M2" como puedo ordenarlo ascendenten
-                
+
                 codigoVias = codigoVias
-                    .OrderBy(c => c.CodigoInterno)
-                    .ThenBy(c => c.ProductoCodigo)
+                    // Ordenamos por la parte numérica del CodigoInterno
+                    .OrderBy(c => int.Parse(c.CodigoInterno.Substring(1)))
+                    .ThenBy(c => c.ProductoCodigo) // Mantenemos el segundo nivel de orden si lo necesitas
                     .ToList();
                 
                 CrearTablaEsterilidadComercial(document, ensayos, codigoVias, viaResultado);
@@ -1080,15 +1084,19 @@ namespace XCeedWordInspeccion
         
         public static void CrearTablaEvaluacionDobleCierre(DocX document, SqlRepository repository)
         {
+            List<Model.CodigoViaFisicoSensorial> codigoVias = repository.ObtenerCodigoViasFisicoSensorial<Model.CodigoViaFisicoSensorial>(IdOT, 1).ToList();
             
-            // TODO: obtener vias de sensoriales
-            List<Model.CodigoViaFisicoSensorial> codigoVias = repository.ObtenerCodigoViasFisicoSensorial<Model.CodigoViaFisicoSensorial>(81531, 1).ToList();
+            codigoVias = codigoVias
+                // Ordenamos por la parte numérica del CodigoInterno
+                .OrderBy(c => int.Parse(c.Codigos.Substring(1)))
+                .ThenBy(c => c.Codigos) // Mantenemos el segundo nivel de orden si lo necesitas
+                .ToList();
             
             List<Model.SpGetTablaEvaluacionDobleCierre> resultados =
-                repository.ObtenerTablaEvaluacion<Model.SpGetTablaEvaluacionDobleCierre>(81531, 1).ToList();
+                repository.ObtenerTablaEvaluacion<Model.SpGetTablaEvaluacionDobleCierre>(IdOT, 1).ToList();
             
             List<Model.UspGetTablaExamenesSensoriales> examenesSensoriales =
-                repository.ObtenerTablaExamenesSensorial<Model.UspGetTablaExamenesSensoriales>(81531, 1).ToList();
+                repository.ObtenerTablaExamenesSensorial<Model.UspGetTablaExamenesSensoriales>(IdOT, 1).ToList();
             
             int cabeceraFilas = 4;
             // int cabeceraColumnas = 13;
@@ -1108,7 +1116,7 @@ namespace XCeedWordInspeccion
             
             // Ancho de columnas
             
-            int[] columnWidths = { 20, 20, 20, 35, 40, 40, 20,20,20, 20,20,20, 20,20,20, 20,20,20, 32, 30, 50 };
+            int[] columnWidths = { 25, 20, 20, 35, 40, 40, 20,20,20, 20,20,20, 20,20,20, 20,20,20, 32, 30, 50 };
             
             for (int i = 0; i < tablaColumnas; i++)
             {
@@ -1356,7 +1364,7 @@ namespace XCeedWordInspeccion
                             
                             FormatTableCell(tabla.Rows[inicioVias + j].Cells[15], FormatearResultadoNumerico(resultado.Traslapem1), 5, false, Alignment.center, false);
                             FormatTableCell(tabla.Rows[inicioVias + j].Cells[16], FormatearResultadoNumerico(resultado.Traslapem2), 5, false, Alignment.center, false);
-                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[17], FormatearResultadoNumerico(resultado.Traslapem2), 5, false, Alignment.center, false);
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[17], FormatearResultadoNumerico(resultado.Traslapem3), 5, false, Alignment.center, false);
                             
                             // Planchados
                             
@@ -1483,7 +1491,13 @@ namespace XCeedWordInspeccion
         
         public static void CrearTablaIndicadoresParasitologicos(DocX document, SqlRepository repository)
         {
-            List<Model.CodigoViaFisicoSensorial> codigoVias = repository.ObtenerCodigoViasFisicoSensorial<Model.CodigoViaFisicoSensorial>(81531, 1).ToList();
+            List<Model.CodigoViaFisicoSensorial> codigoVias = repository.ObtenerCodigoViasFisicoSensorial<Model.CodigoViaFisicoSensorial>(IdOT, 1).ToList();
+            
+            codigoVias = codigoVias
+                // Ordenamos por la parte numérica del CodigoInterno
+                .OrderBy(c => int.Parse(c.Codigos.Substring(1)))
+                .ThenBy(c => c.Codigos) // Mantenemos el segundo nivel de orden si lo necesitas
+                .ToList();
             
             int cabeceraFilas = 3;
             int cabeceraColumnas = 5;
@@ -1559,9 +1573,15 @@ namespace XCeedWordInspeccion
         public static void CrearTablaDeterminacionPresionVacio(DocX document, SqlRepository repository)
         {
             List<Model.UspGetTablaExamenesSensoriales> tablaResultados =
-                repository.ObtenerTablaExamenesSensorial<Model.UspGetTablaExamenesSensoriales>(81531, 1).ToList();
+                repository.ObtenerTablaExamenesSensorial<Model.UspGetTablaExamenesSensoriales>(IdOT, 1).ToList();
             
-            List<Model.CodigoViaFisicoSensorial> codigoVias = repository.ObtenerCodigoViasFisicoSensorial<Model.CodigoViaFisicoSensorial>(81531, 1).ToList();
+            List<Model.CodigoViaFisicoSensorial> codigoVias = repository.ObtenerCodigoViasFisicoSensorial<Model.CodigoViaFisicoSensorial>(IdOT, 1).ToList();
+            
+            codigoVias = codigoVias
+                // Ordenamos por la parte numérica del CodigoInterno
+                .OrderBy(c => int.Parse(c.Codigos.Substring(1)))
+                .ThenBy(c => c.Codigos) // Mantenemos el segundo nivel de orden si lo necesitas
+                .ToList();
             
             int cabeceraFilas = 3;
             int cabeceraColumnas = 6;
@@ -1580,7 +1600,7 @@ namespace XCeedWordInspeccion
             
             // Ancho de columnas
             
-            int[] columnWidths = { 20, 25, 20, 300, 100, 60 };
+            int[] columnWidths = { 25, 25, 20, 300, 100, 60 };
             
             for (int i = 0; i < tablaColumnas; i++)
             {
@@ -1676,7 +1696,7 @@ namespace XCeedWordInspeccion
         public static void CrearTablaHistamina(DocX document, SqlRepository repository)
         {
             List<Model.UspGetReporteInspeccionTablaHistamina> tablaResultados =
-                repository.ObtenerTablaHistamina<Model.UspGetReporteInspeccionTablaHistamina>(81531, 3).ToList();
+                repository.ObtenerTablaHistamina<Model.UspGetReporteInspeccionTablaHistamina>(IdOT, 3).ToList();
             
             // Obtener los codigos de vias de la tabla de resultados 
 
@@ -1811,8 +1831,8 @@ namespace XCeedWordInspeccion
         
         public static void CrearTablaMetalesPesados(DocX document, SqlRepository repository)
         {
-            List<Model.Ensayo> analisis = repository.ObtenerEnsayos<Model.Ensayo>(81531, 1, 3).ToList();
-            List<Model.ViaResultado> tablaResultados = repository.ViasResultados<Model.ViaResultado>(81531, 3).ToList();
+            List<Model.Ensayo> analisis = repository.ObtenerEnsayos<Model.Ensayo>(IdOT, 1, 3).ToList();
+            List<Model.ViaResultado> tablaResultados = repository.ViasResultados<Model.ViaResultado>(IdOT, 3).ToList();
             
             List<string> codigoVias = tablaResultados
                 .Select(x => x.CodPrecinto) // Selecciona solo la propiedad CodPrecinto
@@ -1909,6 +1929,9 @@ namespace XCeedWordInspeccion
             for (int i = 0, inicioAnalisis = cabeceraFilas; i < analisis.Count; i++, inicioAnalisis++)
             {
                 
+                var celda = tabla.Rows[inicioAnalisis];
+                celda.Height = 10;
+                
                 string analisisLabel = analisis[i].Analisis;
                 
                 FormatTableCell(tabla.Rows[inicioAnalisis].Cells[0], analisisLabel, 5, false, Alignment.center, false);
@@ -1920,9 +1943,16 @@ namespace XCeedWordInspeccion
 
                 if (resultado is null) resultado = "0";
                 
+                if (analisisLabel == "Estaño")
+                {
+                    // Estaño tiene un contenido maximo de 200 mg/kg (valor fijo)
+                    FormatTableCell(tabla.Rows[inicioAnalisis].Cells[3], "200", 5, false, Alignment.center, false);
+                }
+
                 FormatTableCell(tabla.Rows[inicioAnalisis].Cells[4], unidadMedida, 5, false, Alignment.center, false);
                 
                 FormatTableCell(tabla.Rows[inicioAnalisis].Cells[5], resultado, 5, false, Alignment.center, false);
+                
 
             }
             
@@ -1938,7 +1968,7 @@ namespace XCeedWordInspeccion
         {
             
             List<Model.UspGetTablaExamenesSensoriales> tablaResultados =
-                repository.ObtenerTablaExamenesSensorial<Model.UspGetTablaExamenesSensoriales>(81531, 1).ToList();
+                repository.ObtenerTablaExamenesSensorial<Model.UspGetTablaExamenesSensoriales>(IdOT, 1).ToList();
 
             if (tablaResultados.Count == 0)
             {
