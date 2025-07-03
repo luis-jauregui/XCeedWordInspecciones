@@ -14,14 +14,20 @@ namespace XCeedWordInspeccion
     {
         
         private const int MAX_VIAS = 5;
-        private const int IdOT = 81445; // ID de la OT para pruebas
-        private const string NumOs = "250529.16"; // Número de OS para pruebas
+        
+        // private const int IdOT = 81445; // ID de la OT para pruebas
+        // private const string NumOs = "250529.16"; // Número de OS para pruebas
+        
+        private const int IdOT = 81531; // ID de la OT para pruebas
+        private const string NumOs = "250531.03"; // Número de OS para pruebas
         
         public static void Main(string[] args)
         {
             
             string filename = "Inspecciones.docx";
-            string templatePath = @"C:\Users\ljauregui\RiderProjects\XCeedWord\XCeedWord\bin\Debug\PlantillaAC.docx";
+            // string templatePath = @"C:\Users\ljauregui\RiderProjects\XCeedWord\XCeedWord\bin\Debug\PlantillaAC.docx";
+            string templatePath = @"C:\Users\LUIS\RiderProjects\XCeedWordInspecciones\XCeedWordInspeccion\bin\Debug\PlantillaAC.docx";
+            
             
             File.Copy(templatePath, filename, true);
 
@@ -62,6 +68,8 @@ namespace XCeedWordInspeccion
                     .ThenBy(c => c.ProductoCodigo) // Mantenemos el segundo nivel de orden si lo necesitas
                     .ToList();
                 
+                CrearTablaLaboratorioMuestrasDirimentes(document, codigoVias, repository);
+                document.InsertParagraph().SpacingAfter(10);
                 CrearTablaEsterilidadComercial(document, ensayos, codigoVias, viaResultado);
                 document.InsertParagraph().SpacingAfter(10);
                 CrearTablaIndicadoresParasitologicos(document, repository);
@@ -1362,9 +1370,9 @@ namespace XCeedWordInspeccion
                             
                             // Traslape teorico
                             
-                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[15], FormatearResultadoNumerico(resultado.Traslapem1), 5, false, Alignment.center, false);
-                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[16], FormatearResultadoNumerico(resultado.Traslapem2), 5, false, Alignment.center, false);
-                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[17], FormatearResultadoNumerico(resultado.Traslapem3), 5, false, Alignment.center, false);
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[15], RedondearValorCustom(FormatearResultadoNumerico(resultado.Traslapem1)), 5, false, Alignment.center, false);
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[16], RedondearValorCustom(FormatearResultadoNumerico(resultado.Traslapem2)), 5, false, Alignment.center, false);
+                            FormatTableCell(tabla.Rows[inicioVias + j].Cells[17], RedondearValorCustom(FormatearResultadoNumerico(resultado.Traslapem3)), 5, false, Alignment.center, false);
                             
                             // Planchados
                             
@@ -1394,8 +1402,47 @@ namespace XCeedWordInspeccion
             
         }
 
-        public static void CrearTablaK(DocX document, List<Model.Ensayo> ensayos, List<Model.CodigoVia> codigoVias)
+        public static void CrearTablaLaboratorioMuestrasDirimentes(DocX document, List<Model.CodigoVia> codigoVias, SqlRepository repository)
         {
+            
+            List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesMB = repository.ObtenerMuestrasLaboratorioDirimente<Model.UspGetMuestraLaboratorioDirimente>(NumOs, 1).ToList();
+            List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesFS = repository.ObtenerMuestrasLaboratorioDirimenteFS<Model.UspGetMuestraLaboratorioDirimente>(NumOs).ToList();
+            List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesFQ = repository.ObtenerMuestrasLaboratorioDirimente<Model.UspGetMuestraLaboratorioDirimente>(NumOs, 2).ToList();
+
+            var resultado = DividirMuestraLaboratorioFQ(muestraLaboratorioDirimentesFQ);
+
+            List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesFQHistamina = resultado.histamina;
+            List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesFQMetalesPesados =
+                resultado.metalesPesados;
+                
+            // Por defecto, asumimos que no hay un punto de corte.
+            int indiceDeCorte = -1;
+
+            for (int i = 1; i < muestraLaboratorioDirimentesFQ.Count; i++)
+            {
+                int numeroAnterior = int.Parse(muestraLaboratorioDirimentesFQ[i - 1].CodInterno.Substring(1));
+                int numeroActual = int.Parse(muestraLaboratorioDirimentesFQ[i].CodInterno.Substring(1));
+
+                // Si el número actual es menor o igual que el anterior, ¡hemos encontrado el reinicio!
+                if (numeroActual <= numeroAnterior)
+                {
+                    indiceDeCorte = i; // Guardamos el índice del primer elemento de la segunda lista
+                    break; // Salimos del bucle porque ya encontramos el punto que buscábamos
+                }
+            }
+
+            if (indiceDeCorte != -1)
+            {
+                muestraLaboratorioDirimentesFQHistamina = muestraLaboratorioDirimentesFQ.Take(indiceDeCorte).ToList();
+                muestraLaboratorioDirimentesFQMetalesPesados =
+                    muestraLaboratorioDirimentesFQ.Skip(indiceDeCorte).ToList();
+            }
+            else
+            {
+                muestraLaboratorioDirimentesFQHistamina = muestraLaboratorioDirimentesFQ;
+            }
+                
+            
             int cabeceraFilas = 2;
             int cabeceraColumnas = 7;
 
@@ -1466,6 +1513,36 @@ namespace XCeedWordInspeccion
                 
                 FormatTableCell(tabla.Rows[inicioVias].Cells[1], "Muestras para laboratorio", 6, false, Alignment.right, false);
                 FormatTableCell(tabla.Rows[inicioVias + 1].Cells[1], "Muestras dirimentes", 6, false, Alignment.right, false);
+                
+                // Microbiologia
+                
+                var muestraMb = muestraLaboratorioDirimentesMB.FirstOrDefault(x => x.CodInterno == ensayoLabel);
+                
+                FormatTableCell(tabla.Rows[inicioVias].Cells[2], muestraMb.MuestraLaboratorio, 5, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[inicioVias + 1].Cells[2], muestraMb.MuestraDirimente, 5, false, Alignment.center, false);
+                
+                // Fisico sensorial y cierre
+                
+                var muestraFs = muestraLaboratorioDirimentesFS.FirstOrDefault(x => x.CodInterno == ensayoLabel);
+                
+                FormatTableCell(tabla.Rows[inicioVias].Cells[3], muestraFs.MuestraLaboratorio, 5, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[inicioVias + 1].Cells[3], muestraFs.MuestraDirimente, 5, false, Alignment.center, false);
+                
+                FormatTableCell(tabla.Rows[inicioVias].Cells[4], muestraFs.MuestraLaboratorioCierre, 5, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[inicioVias + 1].Cells[4], muestraFs.MuestraDirimenteCierre, 5, false, Alignment.center, false);
+                
+                // Histamina y metales pesados
+                
+                var muestraFq = muestraLaboratorioDirimentesFS.FirstOrDefault(x => x.CodInterno == ensayoLabel);
+                
+                var muestraFqHistamina = muestraLaboratorioDirimentesFQHistamina.FirstOrDefault(x => x.CodInterno == ensayoLabel);
+                var muestraFqMetalesPesados = muestraLaboratorioDirimentesFQMetalesPesados.FirstOrDefault(x => x.CodInterno == ensayoLabel);
+                
+                FormatTableCell(tabla.Rows[inicioVias].Cells[5], muestraFqHistamina.MuestraLaboratorio, 5, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[inicioVias + 1].Cells[5], muestraFqHistamina.MuestraDirimente, 5, false, Alignment.center, false);
+                
+                FormatTableCell(tabla.Rows[inicioVias].Cells[6], muestraFqMetalesPesados.MuestraLaboratorio, 5, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[inicioVias + 1].Cells[6], muestraFqMetalesPesados.MuestraDirimente, 5, false, Alignment.center, false);
                 
             }
             
@@ -2349,6 +2426,70 @@ namespace XCeedWordInspeccion
             // Si el valor no se puede convertir a número (ej. es "N/A" o texto),
             // simplemente devolvemos el valor original sin cambios.
             return valor;
+        }
+
+        public static string RedondearValorCustom(string valorComoTexto)
+        {
+            
+            // Paso 1: Intentar convertir el string a decimal (esta lógica no cambia).
+            bool esNumeroValido = decimal.TryParse(
+                valorComoTexto,
+                NumberStyles.Any,
+                CultureInfo.InvariantCulture, // Espera un '.' como separador decimal en la entrada
+                out decimal valorNumerico
+            );
+
+            if (esNumeroValido)
+            {
+                // Paso 2: Aplicar el redondeo matemático (esta lógica no cambia).
+                decimal valorRedondeado = Math.Round(valorNumerico, 1, MidpointRounding.AwayFromZero);
+
+                // Paso 3: ¡NUEVO! Convertir el resultado de vuelta a string con el formato deseado.
+                // Usamos "F1" para asegurar que siempre tenga un decimal y CultureInfo.InvariantCulture
+                // para asegurar que el separador sea un punto '.'.
+                return valorRedondeado.ToString("F1", CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                // Devolvemos un string por defecto que sea coherente con el formato de salida.
+                return "0.0";
+            }
+        }
+        
+        public static (List<Model.UspGetMuestraLaboratorioDirimente> histamina, List<Model.UspGetMuestraLaboratorioDirimente> metalesPesados)
+            DividirMuestraLaboratorioFQ(List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentes)
+        {
+            int indiceDeCorte = -1;
+
+            for (int i = 1; i < muestraLaboratorioDirimentes.Count; i++)
+            {
+                try
+                {
+                    int numeroAnterior = int.Parse(muestraLaboratorioDirimentes[i - 1].CodInterno.Substring(1));
+                    int numeroActual = int.Parse(muestraLaboratorioDirimentes[i].CodInterno.Substring(1));
+
+                    if (numeroActual <= numeroAnterior)
+                    {
+                        indiceDeCorte = i;
+                        break;
+                    }
+                }
+                catch (FormatException)
+                {
+                    continue;
+                }
+            }
+
+            if (indiceDeCorte != -1)
+            {
+                var primeraParte = muestraLaboratorioDirimentes.Take(indiceDeCorte).ToList();
+                var segundaParte = muestraLaboratorioDirimentes.Skip(indiceDeCorte).ToList();
+                return (primeraParte, segundaParte);
+            }
+            else
+            {
+                return (muestraLaboratorioDirimentes, new List<Model.UspGetMuestraLaboratorioDirimente>());
+            }
         }
         
     }

@@ -165,6 +165,18 @@
             public string Muestra { get; set; }
             public string CodigoInterno { get; set; }
         }
+
+        public class UspGetMuestraLaboratorioDirimente
+        {
+            public int IdCotizacion { get; set; }
+            public int IdTipoAnalisis { get; set; }
+            public string CodInterno { get; set; }
+            public string MuestraLaboratorio { get; set; }
+            public string MuestraDirimente { get; set; }
+            // Exclusivo para FS
+            public string MuestraLaboratorioCierre { get; set; }
+            public string MuestraDirimenteCierre { get; set; }
+        }
         
     }
 }

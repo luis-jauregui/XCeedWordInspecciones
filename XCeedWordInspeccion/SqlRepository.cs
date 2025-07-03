@@ -168,5 +168,35 @@ namespace XCeedWordInspeccion
             }
         }
         
+        public IEnumerable<T> ObtenerMuestrasLaboratorioDirimente<T>(string numOs, int idTipoAnalisis)
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string storedProcedure = "usp_get_MuestraLaboratorioDirimente"; // Nombre del procedimiento almacenado
+        
+                return connection.Query<T>(
+                    storedProcedure,
+                    new { NumOs = numOs, idTipoAnalisis = idTipoAnalisis },
+                    commandType: CommandType.StoredProcedure
+                );
+            }
+        }
+        
+        public IEnumerable<T> ObtenerMuestrasLaboratorioDirimenteFS<T>(string numOs)
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string storedProcedure = "usp_get_MuestraLaboratorioDirimenteFS"; // Nombre del procedimiento almacenado
+        
+                return connection.Query<T>(
+                    storedProcedure,
+                    new { NumOs = numOs },
+                    commandType: CommandType.StoredProcedure
+                );
+            }
+        }
+        
     }
 }
