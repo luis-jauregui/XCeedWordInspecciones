@@ -25,8 +25,8 @@ namespace XCeedWordInspeccion
         {
             
             string filename = "Inspecciones.docx";
-            // string templatePath = @"C:\Users\ljauregui\RiderProjects\XCeedWord\XCeedWord\bin\Debug\PlantillaAC.docx";
-            string templatePath = @"C:\Users\LUIS\RiderProjects\XCeedWordInspecciones\XCeedWordInspeccion\bin\Debug\PlantillaAC.docx";
+            string templatePath = @"C:\Users\ljauregui\RiderProjects\XCeedWord\XCeedWord\bin\Debug\PlantillaAC.docx";
+            // string templatePath = @"C:\Users\LUIS\RiderProjects\XCeedWordInspecciones\XCeedWordInspeccion\bin\Debug\PlantillaAC.docx";
             
             
             File.Copy(templatePath, filename, true);
@@ -68,7 +68,7 @@ namespace XCeedWordInspeccion
                     .ThenBy(c => c.ProductoCodigo) // Mantenemos el segundo nivel de orden si lo necesitas
                     .ToList();
                 
-                CrearTablaLaboratorioMuestrasDirimentes(document, codigoVias, repository);
+                // CrearTablaLaboratorioMuestrasDirimentes(document, codigoVias, repository);
                 document.InsertParagraph().SpacingAfter(10);
                 CrearTablaEsterilidadComercial(document, ensayos, codigoVias, viaResultado);
                 document.InsertParagraph().SpacingAfter(10);
