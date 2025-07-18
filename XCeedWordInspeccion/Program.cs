@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
 using System.Drawing;
 using System.Globalization;
@@ -18,8 +17,9 @@ namespace XCeedWordInspeccion
         // private const int IdOT = 81445; // ID de la OT para pruebas
         // private const string NumOs = "250529.16"; // Número de OS para pruebas
         
-        private const int IdOT = 81531; // ID de la OT para pruebas
-        private const string NumOs = "250531.03"; // Número de OS para pruebas
+        private const int IdOTC = 6931; // ID de la OT para pruebas
+        private const int IdOT = 82233; // ID de la OT para pruebas
+        private const string NumOs = "250622.01"; // Número de OS para pruebas
         
         public static void Main(string[] args)
         {
@@ -68,21 +68,23 @@ namespace XCeedWordInspeccion
                     .ThenBy(c => c.ProductoCodigo) // Mantenemos el segundo nivel de orden si lo necesitas
                     .ToList();
                 
+                CrearTablaMuestrasExtraidas(document, repository);
+                
                 // CrearTablaLaboratorioMuestrasDirimentes(document, codigoVias, repository);
-                document.InsertParagraph().SpacingAfter(10);
-                CrearTablaEsterilidadComercial(document, ensayos, codigoVias, viaResultado);
-                document.InsertParagraph().SpacingAfter(10);
-                CrearTablaIndicadoresParasitologicos(document, repository);
-                document.InsertParagraph().SpacingAfter(10);
-                CrearTablaEvaluacionDobleCierre(document, repository);
-                document.InsertParagraph().SpacingAfter(10);
-                CrearTablaDeterminacionPresionVacio(document, repository);
-                document.InsertParagraph().SpacingAfter(10);
-                CrearTablaHistamina(document, repository);
-                document.InsertParagraph().SpacingAfter(10);
-                CrearTablaMetalesPesados(document, repository);
-                document.InsertParagraph().SpacingAfter(10);
-                CrearTablaExtensionesSensoriales(document, codigoVias, repository);
+                // document.InsertParagraph().SpacingAfter(10);
+                // CrearTablaEsterilidadComercial(document, ensayos, codigoVias, viaResultado);
+                // document.InsertParagraph().SpacingAfter(10);
+                // CrearTablaIndicadoresParasitologicos(document, repository);
+                // document.InsertParagraph().SpacingAfter(10);
+                // CrearTablaEvaluacionDobleCierre(document, repository);
+                // document.InsertParagraph().SpacingAfter(10);
+                // CrearTablaDeterminacionPresionVacio(document, repository);
+                // document.InsertParagraph().SpacingAfter(10);
+                // CrearTablaHistamina(document, repository);
+                // document.InsertParagraph().SpacingAfter(10);
+                // CrearTablaMetalesPesados(document, repository);
+                // document.InsertParagraph().SpacingAfter(10);
+                // CrearTablaExtensionesSensoriales(document, codigoVias, repository);
                 
                 // CrearTablaK(document, ensayos, codigoVias);
                 // CrearTablaB(document, vias, codigoVias);
@@ -1402,168 +1404,168 @@ namespace XCeedWordInspeccion
             
         }
 
-        public static void CrearTablaLaboratorioMuestrasDirimentes(DocX document, List<Model.CodigoVia> codigoVias, SqlRepository repository)
-        {
-            
-            List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesMB = repository.ObtenerMuestrasLaboratorioDirimente<Model.UspGetMuestraLaboratorioDirimente>(NumOs, 1).ToList();
-            List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesFS = repository.ObtenerMuestrasLaboratorioDirimenteFS<Model.UspGetMuestraLaboratorioDirimente>(NumOs).ToList();
-            List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesFQ = repository.ObtenerMuestrasLaboratorioDirimente<Model.UspGetMuestraLaboratorioDirimente>(NumOs, 2).ToList();
-
-            var resultado = DividirMuestraLaboratorioFQ(muestraLaboratorioDirimentesFQ);
-
-            List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesFQHistamina = resultado.histamina;
-            List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesFQMetalesPesados =
-                resultado.metalesPesados;
-                
-            // Por defecto, asumimos que no hay un punto de corte.
-            int indiceDeCorte = -1;
-
-            for (int i = 1; i < muestraLaboratorioDirimentesFQ.Count; i++)
-            {
-                int numeroAnterior = int.Parse(muestraLaboratorioDirimentesFQ[i - 1].CodInterno.Substring(1));
-                int numeroActual = int.Parse(muestraLaboratorioDirimentesFQ[i].CodInterno.Substring(1));
-
-                // Si el número actual es menor o igual que el anterior, ¡hemos encontrado el reinicio!
-                if (numeroActual <= numeroAnterior)
-                {
-                    indiceDeCorte = i; // Guardamos el índice del primer elemento de la segunda lista
-                    break; // Salimos del bucle porque ya encontramos el punto que buscábamos
-                }
-            }
-
-            if (indiceDeCorte != -1)
-            {
-                muestraLaboratorioDirimentesFQHistamina = muestraLaboratorioDirimentesFQ.Take(indiceDeCorte).ToList();
-                muestraLaboratorioDirimentesFQMetalesPesados =
-                    muestraLaboratorioDirimentesFQ.Skip(indiceDeCorte).ToList();
-            }
-            else
-            {
-                muestraLaboratorioDirimentesFQHistamina = muestraLaboratorioDirimentesFQ;
-            }
-                
-            
-            int cabeceraFilas = 2;
-            int cabeceraColumnas = 7;
-
-            int tablaFilas = cabeceraFilas + ( codigoVias.Count * 2 );
-            int tablaColumnas = cabeceraColumnas;
-
-            Table tabla = document.AddTable(tablaFilas, tablaColumnas);
-            tabla.Alignment = Alignment.left;
-
-            // Ancho de columnas
-
-            int[] columnWidths = { 30, 110, 75, 75, 75, 75, 75 };
-
-            for (int i = 0; i < tablaColumnas; i++)
-            {
-                if (i <= columnWidths.Length - 1)
-                {
-                    tabla.SetColumnWidth(i, columnWidths[i]);
-                }
-            }
-
-            tabla.Rows[0].MergeCells(0, tabla.ColumnCount - 1); // Titulo
-            
-            // Titulo
-            
-            FormatTableCell(tabla.Rows[0].Cells[0], "PRECINTOS ASIGNADOS A LAS MUESTRAS PARA LABORATORIO Y MUESTRAS DIRIMENTES", 7, true, Alignment.center);
-            
-            // Aux
-            
-            FormatTableCell(tabla.Rows[1].Cells[0], "M", 7, true, Alignment.center);
-
-            // M
-            
-            FormatTableCell(tabla.Rows[1].Cells[1], "", 7, true, Alignment.center);
-
-            // Microbiologico
-
-            FormatTableCell(tabla.Rows[1].Cells[2], "Microbiologico", 7, true, Alignment.center);
-
-            // Fisicosensorial
-
-            FormatTableCell(tabla.Rows[1].Cells[3], "Fisicosensorial", 7, true, Alignment.center);
-
-            // Cierre
-
-            FormatTableCell(tabla.Rows[1].Cells[4], "Cierre", 7, true, Alignment.center);
-
-            // Histamina
-
-            FormatTableCell(tabla.Rows[1].Cells[5], "Histamina", 7, true, Alignment.center);
-
-            // Metales pesados
-
-            FormatTableCell(tabla.Rows[1].Cells[6], "Metales Pesados", 7, true, Alignment.center);
-
-            // Codigo Vias (Dinámicas)
-            
-            for (int i = 0, inicioVias = cabeceraFilas; i < codigoVias.Count; i++, inicioVias += 2)
-            {
-                string ensayoLabel = codigoVias[i].CodigoInterno;
-                FormatTableCell(tabla.Rows[inicioVias].Cells[0], ensayoLabel, 7, true, Alignment.center, false);
-                
-                // Merge de las columnas
-                
-                tabla.MergeCellsInColumn(0, inicioVias, inicioVias + 1);
-                
-                // Muestras
-                
-                FormatTableCell(tabla.Rows[inicioVias].Cells[1], "Muestras para laboratorio", 6, false, Alignment.right, false);
-                FormatTableCell(tabla.Rows[inicioVias + 1].Cells[1], "Muestras dirimentes", 6, false, Alignment.right, false);
-                
-                // Microbiologia
-                
-                var muestraMb = muestraLaboratorioDirimentesMB.FirstOrDefault(x => x.CodInterno == ensayoLabel);
-                
-                FormatTableCell(tabla.Rows[inicioVias].Cells[2], muestraMb.MuestraLaboratorio, 5, false, Alignment.center, false);
-                FormatTableCell(tabla.Rows[inicioVias + 1].Cells[2], muestraMb.MuestraDirimente, 5, false, Alignment.center, false);
-                
-                // Fisico sensorial y cierre
-                
-                var muestraFs = muestraLaboratorioDirimentesFS.FirstOrDefault(x => x.CodInterno == ensayoLabel);
-                
-                FormatTableCell(tabla.Rows[inicioVias].Cells[3], muestraFs.MuestraLaboratorio, 5, false, Alignment.center, false);
-                FormatTableCell(tabla.Rows[inicioVias + 1].Cells[3], muestraFs.MuestraDirimente, 5, false, Alignment.center, false);
-                
-                FormatTableCell(tabla.Rows[inicioVias].Cells[4], muestraFs.MuestraLaboratorioCierre, 5, false, Alignment.center, false);
-                FormatTableCell(tabla.Rows[inicioVias + 1].Cells[4], muestraFs.MuestraDirimenteCierre, 5, false, Alignment.center, false);
-                
-                // Histamina y metales pesados
-                
-                var muestraFq = muestraLaboratorioDirimentesFS.FirstOrDefault(x => x.CodInterno == ensayoLabel);
-                
-                var muestraFqHistamina = muestraLaboratorioDirimentesFQHistamina.FirstOrDefault(x => x.CodInterno == ensayoLabel);
-                var muestraFqMetalesPesados = muestraLaboratorioDirimentesFQMetalesPesados.FirstOrDefault(x => x.CodInterno == ensayoLabel);
-                
-                FormatTableCell(tabla.Rows[inicioVias].Cells[5], muestraFqHistamina.MuestraLaboratorio, 5, false, Alignment.center, false);
-                FormatTableCell(tabla.Rows[inicioVias + 1].Cells[5], muestraFqHistamina.MuestraDirimente, 5, false, Alignment.center, false);
-                
-                FormatTableCell(tabla.Rows[inicioVias].Cells[6], muestraFqMetalesPesados.MuestraLaboratorio, 5, false, Alignment.center, false);
-                FormatTableCell(tabla.Rows[inicioVias + 1].Cells[6], muestraFqMetalesPesados.MuestraDirimente, 5, false, Alignment.center, false);
-                
-            }
-            
-            tabla.Rows[1].MergeCells(0, 1);
-
-            // Descripción
-
-            tabla.InsertRow();
-            
-            // No mover el tabulado a continuación, es necesario para el formato correcto de la tabla.
-            
-            string textNotas = @"Notas:
-- Para la extracción de muestras de análisis de Microbiológico (MB), Fisicosensorial (FS), Histamina (HS), Cierre (C) y Metales Pesados (MP) se aplicó la Norma Técnica Peruana 700.002 ""Lineamientos y 
-  Procedimientos de Muestreo del Pescado y Productos Pesqueros para Inspección"" 2ª Edición, del 04 de julio de 2012. Nivel de Inspección I, NCA = 6,5. Se procedió a la toma de muestras con fines de ensayo 
-  (Muestras  para laboratorio) y muestras dirimentes, en igual cantidad, bajo la misma metodología y con precinto propio. Las muestras dirimentes serán conservadas bajo condiciones adecuadas de 
-  almacenamiento y custodia por un período de 180 días, conforme a los procedimientos internos vigentes.";
-
-            AgregarDescripcion(tabla, textNotas, Alignment.both);
-
-            document.InsertTable(tabla);
-        }
+//         public static void CrearTablaLaboratorioMuestrasDirimentes(DocX document, List<Model.CodigoVia> codigoVias, SqlRepository repository)
+//         {
+//             
+//             List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesMB = repository.ObtenerMuestrasLaboratorioDirimente<Model.UspGetMuestraLaboratorioDirimente>(NumOs, 1).ToList();
+//             List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesFS = repository.ObtenerMuestrasLaboratorioDirimenteFS<Model.UspGetMuestraLaboratorioDirimente>(NumOs).ToList();
+//             List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesFQ = repository.ObtenerMuestrasLaboratorioDirimente<Model.UspGetMuestraLaboratorioDirimente>(NumOs, 2).ToList();
+//
+//             var resultado = DividirMuestraLaboratorioFQ(muestraLaboratorioDirimentesFQ);
+//
+//             List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesFQHistamina = resultado.histamina;
+//             List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentesFQMetalesPesados =
+//                 resultado.metalesPesados;
+//                 
+//             // Por defecto, asumimos que no hay un punto de corte.
+//             int indiceDeCorte = -1;
+//
+//             for (int i = 1; i < muestraLaboratorioDirimentesFQ.Count; i++)
+//             {
+//                 int numeroAnterior = int.Parse(muestraLaboratorioDirimentesFQ[i - 1].CodInterno.Substring(1));
+//                 int numeroActual = int.Parse(muestraLaboratorioDirimentesFQ[i].CodInterno.Substring(1));
+//
+//                 // Si el número actual es menor o igual que el anterior, ¡hemos encontrado el reinicio!
+//                 if (numeroActual <= numeroAnterior)
+//                 {
+//                     indiceDeCorte = i; // Guardamos el índice del primer elemento de la segunda lista
+//                     break; // Salimos del bucle porque ya encontramos el punto que buscábamos
+//                 }
+//             }
+//
+//             if (indiceDeCorte != -1)
+//             {
+//                 muestraLaboratorioDirimentesFQHistamina = muestraLaboratorioDirimentesFQ.Take(indiceDeCorte).ToList();
+//                 muestraLaboratorioDirimentesFQMetalesPesados =
+//                     muestraLaboratorioDirimentesFQ.Skip(indiceDeCorte).ToList();
+//             }
+//             else
+//             {
+//                 muestraLaboratorioDirimentesFQHistamina = muestraLaboratorioDirimentesFQ;
+//             }
+//                 
+//             
+//             int cabeceraFilas = 2;
+//             int cabeceraColumnas = 7;
+//
+//             int tablaFilas = cabeceraFilas + ( codigoVias.Count * 2 );
+//             int tablaColumnas = cabeceraColumnas;
+//
+//             Table tabla = document.AddTable(tablaFilas, tablaColumnas);
+//             tabla.Alignment = Alignment.left;
+//
+//             // Ancho de columnas
+//
+//             int[] columnWidths = { 30, 110, 75, 75, 75, 75, 75 };
+//
+//             for (int i = 0; i < tablaColumnas; i++)
+//             {
+//                 if (i <= columnWidths.Length - 1)
+//                 {
+//                     tabla.SetColumnWidth(i, columnWidths[i]);
+//                 }
+//             }
+//
+//             tabla.Rows[0].MergeCells(0, tabla.ColumnCount - 1); // Titulo
+//             
+//             // Titulo
+//             
+//             FormatTableCell(tabla.Rows[0].Cells[0], "PRECINTOS ASIGNADOS A LAS MUESTRAS PARA LABORATORIO Y MUESTRAS DIRIMENTES", 7, true, Alignment.center);
+//             
+//             // Aux
+//             
+//             FormatTableCell(tabla.Rows[1].Cells[0], "M", 7, true, Alignment.center);
+//
+//             // M
+//             
+//             FormatTableCell(tabla.Rows[1].Cells[1], "", 7, true, Alignment.center);
+//
+//             // Microbiologico
+//
+//             FormatTableCell(tabla.Rows[1].Cells[2], "Microbiologico", 7, true, Alignment.center);
+//
+//             // Fisicosensorial
+//
+//             FormatTableCell(tabla.Rows[1].Cells[3], "Fisicosensorial", 7, true, Alignment.center);
+//
+//             // Cierre
+//
+//             FormatTableCell(tabla.Rows[1].Cells[4], "Cierre", 7, true, Alignment.center);
+//
+//             // Histamina
+//
+//             FormatTableCell(tabla.Rows[1].Cells[5], "Histamina", 7, true, Alignment.center);
+//
+//             // Metales pesados
+//
+//             FormatTableCell(tabla.Rows[1].Cells[6], "Metales Pesados", 7, true, Alignment.center);
+//
+//             // Codigo Vias (Dinámicas)
+//             
+//             for (int i = 0, inicioVias = cabeceraFilas; i < codigoVias.Count; i++, inicioVias += 2)
+//             {
+//                 string ensayoLabel = codigoVias[i].CodigoInterno;
+//                 FormatTableCell(tabla.Rows[inicioVias].Cells[0], ensayoLabel, 7, true, Alignment.center, false);
+//                 
+//                 // Merge de las columnas
+//                 
+//                 tabla.MergeCellsInColumn(0, inicioVias, inicioVias + 1);
+//                 
+//                 // Muestras
+//                 
+//                 FormatTableCell(tabla.Rows[inicioVias].Cells[1], "Muestras para laboratorio", 6, false, Alignment.right, false);
+//                 FormatTableCell(tabla.Rows[inicioVias + 1].Cells[1], "Muestras dirimentes", 6, false, Alignment.right, false);
+//                 
+//                 // Microbiologia
+//                 
+//                 var muestraMb = muestraLaboratorioDirimentesMB.FirstOrDefault(x => x.CodInterno == ensayoLabel);
+//                 
+//                 FormatTableCell(tabla.Rows[inicioVias].Cells[2], muestraMb.MuestraLaboratorio, 5, false, Alignment.center, false);
+//                 FormatTableCell(tabla.Rows[inicioVias + 1].Cells[2], muestraMb.MuestraDirimente, 5, false, Alignment.center, false);
+//                 
+//                 // Fisico sensorial y cierre
+//                 
+//                 var muestraFs = muestraLaboratorioDirimentesFS.FirstOrDefault(x => x.CodInterno == ensayoLabel);
+//                 
+//                 FormatTableCell(tabla.Rows[inicioVias].Cells[3], muestraFs.MuestraLaboratorio, 5, false, Alignment.center, false);
+//                 FormatTableCell(tabla.Rows[inicioVias + 1].Cells[3], muestraFs.MuestraDirimente, 5, false, Alignment.center, false);
+//                 
+//                 FormatTableCell(tabla.Rows[inicioVias].Cells[4], muestraFs.MuestraLaboratorioCierre, 5, false, Alignment.center, false);
+//                 FormatTableCell(tabla.Rows[inicioVias + 1].Cells[4], muestraFs.MuestraDirimenteCierre, 5, false, Alignment.center, false);
+//                 
+//                 // Histamina y metales pesados
+//                 
+//                 var muestraFq = muestraLaboratorioDirimentesFS.FirstOrDefault(x => x.CodInterno == ensayoLabel);
+//                 
+//                 var muestraFqHistamina = muestraLaboratorioDirimentesFQHistamina.FirstOrDefault(x => x.CodInterno == ensayoLabel);
+//                 var muestraFqMetalesPesados = muestraLaboratorioDirimentesFQMetalesPesados.FirstOrDefault(x => x.CodInterno == ensayoLabel);
+//                 
+//                 FormatTableCell(tabla.Rows[inicioVias].Cells[5], muestraFqHistamina.MuestraLaboratorio, 5, false, Alignment.center, false);
+//                 FormatTableCell(tabla.Rows[inicioVias + 1].Cells[5], muestraFqHistamina.MuestraDirimente, 5, false, Alignment.center, false);
+//                 
+//                 FormatTableCell(tabla.Rows[inicioVias].Cells[6], muestraFqMetalesPesados.MuestraLaboratorio, 5, false, Alignment.center, false);
+//                 FormatTableCell(tabla.Rows[inicioVias + 1].Cells[6], muestraFqMetalesPesados.MuestraDirimente, 5, false, Alignment.center, false);
+//                 
+//             }
+//             
+//             tabla.Rows[1].MergeCells(0, 1);
+//
+//             // Descripción
+//
+//             tabla.InsertRow();
+//             
+//             // No mover el tabulado a continuación, es necesario para el formato correcto de la tabla.
+//             
+//             string textNotas = @"Notas:
+// - Para la extracción de muestras de análisis de Microbiológico (MB), Fisicosensorial (FS), Histamina (HS), Cierre (C) y Metales Pesados (MP) se aplicó la Norma Técnica Peruana 700.002 ""Lineamientos y 
+//   Procedimientos de Muestreo del Pescado y Productos Pesqueros para Inspección"" 2ª Edición, del 04 de julio de 2012. Nivel de Inspección I, NCA = 6,5. Se procedió a la toma de muestras con fines de ensayo 
+//   (Muestras  para laboratorio) y muestras dirimentes, en igual cantidad, bajo la misma metodología y con precinto propio. Las muestras dirimentes serán conservadas bajo condiciones adecuadas de 
+//   almacenamiento y custodia por un período de 180 días, conforme a los procedimientos internos vigentes.";
+//
+//             AgregarDescripcion(tabla, textNotas, Alignment.both);
+//
+//             document.InsertTable(tabla);
+//         }
         
         
         public static void CrearTablaIndicadoresParasitologicos(DocX document, SqlRepository repository)
@@ -2193,6 +2195,173 @@ namespace XCeedWordInspeccion
             
         }
         
+        // public static void CreateTableA(DocX document, List<Model.Via> vias, List<Model.Ensayo> ensayos, List<Model.ViaResultado> viaResultados, List<Model.CodigoVia> codigoVias, int iTable, int numVias)
+        // {
+        //     int headerRows = 3;
+        //     int headerColumns = 6;
+        //
+        //     int tableRows = headerRows + ensayos.Count;
+        //     int tableColumns = headerColumns + vias.Count;
+        //     
+        //     Table table = document.AddTable(tableRows, tableColumns);
+        //     table.Alignment = Alignment.center;
+        //     
+        //     // Encabezado
+        //     
+        //     // Ancho de columnas
+        //     
+        //     int[] columnWidths = { 100, 40, 40, 45, 45 };
+        //     
+        //     for (int i = 0; i < tableColumns; i++)
+        //     {
+        //
+        //         if (i <= columnWidths.Length - 1)
+        //         {
+        //             table.SetColumnWidth(i, columnWidths[i]);
+        //         }
+        //         
+        //         // Vías dinámicas
+        //
+        //         if (i >= 5 && i < tableColumns - 1)
+        //         {
+        //             table.SetColumnWidth(i, 35);
+        //         }
+        //         
+        //         // Última columna
+        //
+        //         if (i == tableColumns - 1)
+        //         {
+        //             table.SetColumnWidth(i, 50);
+        //         }
+        //         
+        //     }
+        //     
+        //     // Combinas filas
+        //     
+        //     table.MergeCellsInColumn(0, 0, headerRows - 1);
+        //     
+        //     table.MergeCellsInColumn(1, 0, 1);
+        //     table.MergeCellsInColumn(2, 0, 1);
+        //     
+        //     table.MergeCellsInColumn(3, 0, 1);
+        //     table.MergeCellsInColumn(4, 0, 1);
+        //     
+        //     table.MergeCellsInColumn(table.ColumnCount - 1, 0, headerRows - 1);
+        //     
+        //     // Microorganismo
+        //     
+        //     FormatTableCell(table.Rows[0].Cells[0], "MICROORGANISMO", 3, true, Alignment.center);
+        //     
+        //     // Plan de evaluación
+        //     
+        //     table.Rows[0].MergeCells(1, 2);
+        //     table.Rows[1].MergeCells(1, 2);
+        //     FormatTableCell(table.Rows[0].Cells[1], "PLAN DE EVALUACIÓN", 3, true, Alignment.center);
+        //     
+        //     FormatTableCell(table.Rows[2].Cells[1], "n", 3, true, Alignment.center);
+        //     FormatTableCell(table.Rows[2].Cells[2], "c", 3, true, Alignment.center);
+        //     
+        //     // Limites
+        //     
+        //     table.Rows[0].MergeCells(2, 3);
+        //     table.Rows[1].MergeCells(2, 3);
+        //     FormatTableCell(table.Rows[0].Cells[2], "LIMITES", 3, true, Alignment.center);
+        //     
+        //     FormatTableCell(table.Rows[2].Cells[3], "m", 3, true, Alignment.center);
+        //     FormatTableCell(table.Rows[2].Cells[4], "M", 3, true, Alignment.center);
+        //     
+        //     // Distribución de muestras
+        //     
+        //     table.Rows[0].MergeCells(3, 3 + vias.Count - 1);
+        //     FormatTableCell(table.Rows[0].Cells[3], "DISTRIBUCIÓN DE MUESTRAS", 3, true, Alignment.center);
+        //     
+        //     // Código de Vías (Dinámicas)
+        //     
+        //     AgruparYFormatearVias(table, vias, codigoVias, 1, 5);
+        //         
+        //     // for (int i = 0, aux = 0; i < vias.Count;)
+        //     // {
+        //     //     string currentVia = vias[i].Presentacion;
+        //     //     int startCol = 5 + i - aux;
+        //     //     int j = i + 1;
+        //     //
+        //     //     // Buscar cuántas 'vias' consecutivas tienen la misma presentación
+        //     //     while (j < vias.Count && vias[j].Presentacion == currentVia)
+        //     //     {
+        //     //         j++;
+        //     //         aux++;
+        //     //     }
+        //     //
+        //     //     int endCol =  5 + j - (i == 0 ? 1 : aux);
+        //     //
+        //     //     // Formatear y/o fusionar celdas según cantidad de columnas iguales
+        //     //     if (j - i > 1)
+        //     //     {
+        //     //         table.Rows[1].MergeCells(startCol - 2, endCol - 2); 
+        //     //         // table.Rows[2].MergeCells(startCol, endCol);
+        //     //     }
+        //     //
+        //     //
+        //     //     var productoCodigo = codigoVias.Find(x => x.CodigoInterno == currentVia).ProductoCodigo;
+        //     //     FormatTableCell(table.Rows[1].Cells[startCol - 2], productoCodigo, 3, true, Alignment.center);
+        //     //     
+        //     //     // FormatTableCell(table.Rows[2].Cells[startCol], currentVia, 4, true, Alignment.center); // Codigo
+        //     //
+        //     //     i = j; // Saltar al siguiente grupo
+        //     // }
+        //     
+        //     
+        //     // Vias (Dinámicas)
+        //         
+        //     for (int i = 0, iCellIndex= 5; i < vias.Count; i++, iCellIndex++)
+        //     {
+        //         FormatTableCell(table.Rows[2].Cells[iCellIndex], vias[i].Muestra, 4, true, Alignment.center);
+        //     }
+        //     
+        //     // Ensayos
+        //     
+        //     for (int i = 0; i < ensayos.Count; i++)
+        //     {
+        //
+        //         string ensayoLabel = ensayos[i].Analisis;
+        //         
+        //         FormatTableCell(table.Rows[headerRows + i].Cells[0], ensayoLabel, 4, false, Alignment.left);
+        //         FormatTableCell(table.Rows[headerRows + i].Cells[1], numVias.ToString(), 4, false, Alignment.center);
+        //
+        //         int j = 5;
+        //         
+        //         // Resultado por cada ensayo
+        //         
+        //         var resultados = 
+        //             viaResultados
+        //                 .Where(v => v.IdAnalisis == ensayos[i].IdAnalisis).ToList()
+        //                 .GetRange((iTable * MAX_VIAS), Math.Min(MAX_VIAS, viaResultados.Count - iTable * MAX_VIAS));
+        //
+        //         foreach (var via in resultados)
+        //         {
+        //             
+        //             // bool match = (ensayos[i].IdProducto == via.IdProducto && ensayos[i].IdAnalisis == via.IdAnalisis && via.CodigoInterno ==);
+        //
+        //             if (true)
+        //             {
+        //                 FormatTableCell(table.Rows[headerRows + i].Cells[j], via.Resultado, 4, true, Alignment.center);
+        //             }
+        //
+        //             j++;
+        //
+        //         }
+        //             
+        //     }
+        //     
+        //     // Conclusión
+        //
+        //     FormatTableCell(table.Rows[0].Cells[table.Rows[0].Cells.Count - 1], "CONCLUSIÓN", 3, true, Alignment.center);
+        //
+        //     // Guardar
+        //     
+        //     document.InsertTable(table);
+        // }
+        
         private static void FormatTableCell(Cell cell, string text, int fontSize, bool isBold, Alignment alignment, bool setColor = true, TextDirection textDirection = TextDirection.right )
         {
             cell.Paragraphs[0].Append(text)
@@ -2380,6 +2549,132 @@ namespace XCeedWordInspeccion
             
             document.InsertTable(tabla);
             
+        }
+        
+        public static void CrearTablaMuestrasExtraidas(DocX document, SqlRepository repository)
+        {
+            // List<Model.CodigoVia> codigoVias = repository.ObtenerCodigoVias<Model.CodigoVia>(NumOs).ToList();
+
+            List<Model.CodigoVia> codigoVias = new List<Model.CodigoVia>();
+            
+            Model.CodigoVia M1 = new Model.CodigoVia
+            {
+                CodigoInterno = "M1",
+                ProductoCodigo = ""
+            };
+            
+            Model.CodigoVia M2 = new Model.CodigoVia
+            {
+                CodigoInterno = "M2",
+                ProductoCodigo = ""
+            };
+            
+            codigoVias.Add(M1);
+            codigoVias.Add(M2);
+            
+            List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentes = repository.ObtenerMuestrasLaboratorioDirimente<Model.UspGetMuestraLaboratorioDirimente>(IdOTC, 1).ToList();
+
+            int cantidadFilas = 6;
+            int cantidadColumnas = 2;
+
+            foreach (var codigoVia in codigoVias)
+            {
+                Table tabla = document.AddTable(cantidadFilas, cantidadColumnas);
+                tabla.Alignment = Alignment.center;
+
+                int[] anchoColumnas = { 100, 100 };
+
+                for (int i = 0; i < cantidadColumnas; i++)
+                {
+                    if (i <= anchoColumnas.Length - 1)
+                    {
+                        tabla.SetColumnWidth(i, anchoColumnas[i]);
+                    }
+                }
+
+                FormatTableCell(tabla.Rows[0].Cells[0], "Lote", 8, true, Alignment.center);
+                FormatTableCell(tabla.Rows[0].Cells[1], "Muestras extraídas para ensayo microbiológico", 8, true, Alignment.center);
+            
+                FormatTableCell(tabla.Rows[1].Cells[0], codigoVia.CodigoInterno, 8, true, Alignment.center);
+                tabla.Rows[1].MergeCells(0, tabla.ColumnCount - 1);
+            
+                FormatTableCell(tabla.Rows[2].Cells[0], "", 8, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[2].Cells[1], "n1,n2,n3,n4,n5", 8, false, Alignment.center, false);
+            
+                FormatTableCell(tabla.Rows[3].Cells[0], "Precintos de muestras", 8, false, Alignment.left, false);
+                FormatTableCell(tabla.Rows[3].Cells[1], muestraLaboratorioDirimentes.First().MuestraLaboratorio, 8, false, Alignment.center, false);
+            
+                FormatTableCell(tabla.Rows[4].Cells[0], "Precintos de dirimencias", 8, false, Alignment.left, false);
+                FormatTableCell(tabla.Rows[4].Cells[1], muestraLaboratorioDirimentes.First().MuestraDirimente, 8, false, Alignment.center, false);
+            
+                AgregarDescripcion(tabla, "Se tomaron muestras dirimentes con la misma metodología de extracción, en la misma cantidad, con precinto propio y sin requerimiento de ensayo");
+            
+                document.InsertTable(tabla);
+                document.InsertParagraph();
+            }
+
+        }
+        
+        public static void CrearTablaMuestreoParaAnalisisMicrobiologicos(DocX document, SqlRepository repository)
+        {
+            List<Model.CodigoVia> codigoVias = new List<Model.CodigoVia>();
+            
+            Model.CodigoVia M1 = new Model.CodigoVia
+            {
+                CodigoInterno = "M1",
+                ProductoCodigo = ""
+            };
+            
+            Model.CodigoVia M2 = new Model.CodigoVia
+            {
+                CodigoInterno = "M2",
+                ProductoCodigo = ""
+            };
+            
+            codigoVias.Add(M1);
+            codigoVias.Add(M2);
+            
+            List<Model.Ensayo> ensayos = repository.ObtenerEnsayos<Model.Ensayo>(IdOT, 5, 2).ToList();
+
+            int cantidadFilas = 4 + ensayos.Count;
+            int cantidadColumnas = 12;
+
+            foreach (var codigoVia in codigoVias)
+            {
+                Table tabla = document.AddTable(cantidadFilas, cantidadColumnas);
+                tabla.Alignment = Alignment.center;
+
+                int[] anchoColumnas = { 100, 100 };
+
+                for (int i = 0; i < cantidadColumnas; i++)
+                {
+                    if (i <= anchoColumnas.Length - 1)
+                    {
+                        tabla.SetColumnWidth(i, anchoColumnas[i]);
+                    }
+                }
+
+                FormatTableCell(tabla.Rows[0].Cells[0], "Lote", 8, true, Alignment.center);
+                FormatTableCell(tabla.Rows[0].Cells[1], "Muestras extraídas para ensayo microbiológico", 8, true, Alignment.center);
+            
+                FormatTableCell(tabla.Rows[1].Cells[0], codigoVia.CodigoInterno, 8, true, Alignment.center);
+                tabla.Rows[1].MergeCells(0, tabla.ColumnCount - 1);
+            
+                FormatTableCell(tabla.Rows[2].Cells[0], "", 8, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[2].Cells[1], "n1,n2,n3,n4,n5", 8, false, Alignment.center, false);
+            
+                FormatTableCell(tabla.Rows[3].Cells[0], "Precintos de muestras", 8, false, Alignment.left, false);
+                FormatTableCell(tabla.Rows[3].Cells[1], muestraLaboratorioDirimentes.First().MuestraLaboratorio, 8, false, Alignment.center, false);
+            
+                FormatTableCell(tabla.Rows[4].Cells[0], "Precintos de dirimencias", 8, false, Alignment.left, false);
+                FormatTableCell(tabla.Rows[4].Cells[1], muestraLaboratorioDirimentes.First().MuestraDirimente, 8, false, Alignment.center, false);
+            
+                AgregarDescripcion(tabla, "Se tomaron muestras dirimentes con la misma metodología de extracción, en la misma cantidad, con precinto propio y sin requerimiento de ensayo");
+            
+                document.InsertTable(tabla);
+                document.InsertParagraph();
+            }
+
         }
 
         private static void AgregarTitulo(Table table, string titulo)
