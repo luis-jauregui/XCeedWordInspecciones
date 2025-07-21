@@ -25,8 +25,8 @@ namespace XCeedWordInspeccion
         {
             
             string filename = "Inspecciones.docx";
-            // string templatePath = @"C:\Users\ljauregui\RiderProjects\XCeedWord\XCeedWord\bin\Debug\PlantillaAC.docx";
-            string templatePath = @"C:\Users\LUIS\RiderProjects\XCeedWordInspecciones\XCeedWordInspeccion\bin\Debug\PlantillaAC.docx";
+            string templatePath = @"C:\Users\ljauregui\RiderProjects\XCeedWord\XCeedWord\bin\Debug\PlantillaAC.docx";
+            // string templatePath = @"C:\Users\LUIS\RiderProjects\XCeedWordInspecciones\XCeedWordInspeccion\bin\Debug\PlantillaAC.docx";
             
             
             File.Copy(templatePath, filename, true);
@@ -2560,47 +2560,63 @@ namespace XCeedWordInspeccion
         public static void CrearTablaMuestrasExtraidasMicrobiologia(DocX document, SqlRepository repository)
         {
             List<Model.CodigoVia> codigoVias = repository.ObtenerCodigoVias<Model.CodigoVia>(NumOs).ToList();
-
             List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentes = repository.ObtenerMuestrasLaboratorioDirimente<Model.UspGetMuestraLaboratorioDirimente>(IdOTC, 1).ToList();
+            
+            int encabezadoFilas = 1;
 
-            int cantidadFilas = 6;
+            int cantidadFilas = encabezadoFilas + ( 4 * codigoVias.Count);
             int cantidadColumnas = 2;
 
-            foreach (var codigoVia in codigoVias)
+            Table tabla = document.AddTable(cantidadFilas, cantidadColumnas);
+            tabla.Alignment = Alignment.center;
+
+            int[] anchoColumnas = { 100, 100 };
+
+            for (int i = 0; i < cantidadColumnas; i++)
             {
-                Table tabla = document.AddTable(cantidadFilas, cantidadColumnas);
-                tabla.Alignment = Alignment.center;
-
-                int[] anchoColumnas = { 100, 100 };
-
-                for (int i = 0; i < cantidadColumnas; i++)
+                if (i <= anchoColumnas.Length - 1)
                 {
-                    if (i <= anchoColumnas.Length - 1)
-                    {
-                        tabla.SetColumnWidth(i, anchoColumnas[i]);
-                    }
+                    tabla.SetColumnWidth(i, anchoColumnas[i]);
                 }
-
-                FormatTableCell(tabla.Rows[0].Cells[0], "Lote", 8, true, Alignment.center);
-                FormatTableCell(tabla.Rows[0].Cells[1], "Muestras extraídas para ensayo microbiológico", 8, true, Alignment.center);
-            
-                FormatTableCell(tabla.Rows[1].Cells[0], codigoVia.CodigoInterno, 8, true, Alignment.center);
-                tabla.Rows[1].MergeCells(0, tabla.ColumnCount - 1);
-            
-                FormatTableCell(tabla.Rows[2].Cells[0], "", 8, false, Alignment.center, false);
-                FormatTableCell(tabla.Rows[2].Cells[1], "n1,n2,n3,n4,n5", 8, false, Alignment.center, false);
-            
-                FormatTableCell(tabla.Rows[3].Cells[0], "Precintos de muestras", 8, false, Alignment.left, false);
-                FormatTableCell(tabla.Rows[3].Cells[1], muestraLaboratorioDirimentes.Find(m => m.CodInterno == codigoVia.CodigoInterno).MuestraLaboratorio, 8, false, Alignment.center, false);
-            
-                FormatTableCell(tabla.Rows[4].Cells[0], "Precintos de dirimencias", 8, false, Alignment.left, false);
-                FormatTableCell(tabla.Rows[4].Cells[1], muestraLaboratorioDirimentes.Find(m => m.CodInterno == codigoVia.CodigoInterno).MuestraDirimente, 8, false, Alignment.center, false);
-            
-                AgregarDescripcion(tabla, "Se tomaron muestras dirimentes con la misma metodología de extracción, en la misma cantidad, con precinto propio y sin requerimiento de ensayo");
-            
-                document.InsertTable(tabla);
-                document.InsertParagraph();
             }
+
+            FormatTableCell(tabla.Rows[0].Cells[0], "Lote", 8, true, Alignment.center);
+            FormatTableCell(tabla.Rows[0].Cells[1], "Muestras extraídas para ensayo microbiológico", 8, true,
+                Alignment.center);
+
+            for (int i = 0, aux = encabezadoFilas; aux < (codigoVias.Count * 4) - 1; i++, aux+= 3)
+            {
+                string codigoInterno = codigoVias[i].CodigoInterno;
+                string precintoMuestra = muestraLaboratorioDirimentes.Find(m => m.CodInterno == codigoInterno).MuestraLaboratorio;
+                string precintoDirimente = muestraLaboratorioDirimentes.Find(m => m.CodInterno == codigoInterno).MuestraDirimente;
+                
+                tabla.Rows[aux + i].MergeCells(0, tabla.ColumnCount - 1);
+                FormatTableCell(tabla.Rows[aux + i].Cells[0], codigoInterno, 8, true, Alignment.center, true);
+                
+                // Vias
+                
+                FormatTableCell(tabla.Rows[aux + i + 1].Cells[0], "", 8, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[aux + i + 1].Cells[1], "n1,n2,n3,n4,n5", 8, false, Alignment.center, false);
+                
+                // Precinto Muestras
+                
+                FormatTableCell(tabla.Rows[aux + i + 2].Cells[0], "Precinto de muestras", 8, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[aux + i + 2].Cells[1], precintoMuestra, 8, false, Alignment.center, false);
+                
+                // Precinto Dirimientes
+                
+                FormatTableCell(tabla.Rows[aux + i + 3].Cells[0], "Precinto de dirimencias", 8, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[aux + i + 3].Cells[1], precintoDirimente, 8, false, Alignment.center, false);
+                
+            }
+
+            tabla.InsertRow();
+
+            AgregarDescripcion(tabla,
+                "Se tomaron muestras dirimentes con la misma metodología de extracción, en la misma cantidad, con precinto propio y sin requerimiento de ensayo");
+
+            document.InsertTable(tabla);
+            document.InsertParagraph();
 
         }
         
@@ -2611,44 +2627,62 @@ namespace XCeedWordInspeccion
 
             List<Model.UspGetMuestraLaboratorioDirimente> muestraLaboratorioDirimentes = repository.ObtenerMuestrasLaboratorioDirimente<Model.UspGetMuestraLaboratorioDirimente>(IdOTC, 3).ToList();
 
-            int cantidadFilas = 6;
+            int encabezadoFilas = 1;
+
+            int cantidadFilas = encabezadoFilas + (4 * codigoVias.Count);
             int cantidadColumnas = 2;
 
-            foreach (var codigoVia in codigoVias)
+            Table tabla = document.AddTable(cantidadFilas, cantidadColumnas);
+            tabla.Alignment = Alignment.center;
+
+            int[] anchoColumnas = { 100, 100 };
+
+            for (int i = 0; i < cantidadColumnas; i++)
             {
-                Table tabla = document.AddTable(cantidadFilas, cantidadColumnas);
-                tabla.Alignment = Alignment.center;
-
-                int[] anchoColumnas = { 100, 100 };
-
-                for (int i = 0; i < cantidadColumnas; i++)
+                if (i <= anchoColumnas.Length - 1)
                 {
-                    if (i <= anchoColumnas.Length - 1)
-                    {
-                        tabla.SetColumnWidth(i, anchoColumnas[i]);
-                    }
+                    tabla.SetColumnWidth(i, anchoColumnas[i]);
                 }
-
-                FormatTableCell(tabla.Rows[0].Cells[0], "Lote", 8, true, Alignment.center);
-                FormatTableCell(tabla.Rows[0].Cells[1], "Muestras extraídas para ensayo físico sensorial", 8, true, Alignment.center);
-            
-                FormatTableCell(tabla.Rows[1].Cells[0], codigoVia.CodigoInterno, 8, true, Alignment.center);
-                tabla.Rows[1].MergeCells(0, tabla.ColumnCount - 1);
-            
-                FormatTableCell(tabla.Rows[2].Cells[0], "", 8, false, Alignment.center, false);
-                FormatTableCell(tabla.Rows[2].Cells[1], codigoVia.RangoVias, 8, false, Alignment.center, false);
-            
-                FormatTableCell(tabla.Rows[3].Cells[0], "Precintos de muestras", 8, false, Alignment.left, false);
-                FormatTableCell(tabla.Rows[3].Cells[1], muestraLaboratorioDirimentes.Find(m => m.CodInterno == codigoVia.CodigoInterno).MuestraLaboratorio, 8, false, Alignment.center, false);
-            
-                FormatTableCell(tabla.Rows[4].Cells[0], "Precintos de dirimencias", 8, false, Alignment.left, false);
-                FormatTableCell(tabla.Rows[4].Cells[1], muestraLaboratorioDirimentes.Find(m => m.CodInterno == codigoVia.CodigoInterno).MuestraDirimente, 8, false, Alignment.center, false);
-            
-                AgregarDescripcion(tabla, "Se tomaron muestras dirimentes con la misma metodología de extracción, en la misma cantidad, con precinto propio y sin requerimiento de ensayo");
-            
-                document.InsertTable(tabla);
-                document.InsertParagraph();
             }
+            
+            FormatTableCell(tabla.Rows[0].Cells[0], "Lote", 8, true, Alignment.center);
+            FormatTableCell(tabla.Rows[0].Cells[1], "Muestras extraídas para ensayo físico sensorial", 8, true,
+                Alignment.center);
+
+
+            for (int i = 0, aux = encabezadoFilas; aux < codigoVias.Count * 4 - 1; i++, aux += 3)
+            {
+                string codigoInterno = codigoVias[i].CodigoInterno;
+                string precintoMuestra = muestraLaboratorioDirimentes.Find(m => m.CodInterno == codigoInterno).MuestraLaboratorio;
+                string precintoDirimente = muestraLaboratorioDirimentes.Find(m => m.CodInterno == codigoInterno).MuestraDirimente;
+                
+                // Codigo
+                
+                tabla.Rows[aux + i].MergeCells(0, tabla.ColumnCount - 1);
+                FormatTableCell(tabla.Rows[aux + i].Cells[0], codigoInterno, 8, true, Alignment.center);
+                
+                // Vias
+                
+                FormatTableCell(tabla.Rows[aux + i + 1].Cells[0], "", 8, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[aux + i + 1].Cells[1], codigoInterno, 8, false, Alignment.center, false);
+                
+                // Precinto de muestras
+
+                FormatTableCell(tabla.Rows[aux + i + 2].Cells[0], "Precintos de muestras", 8, false, Alignment.left, false);
+                FormatTableCell(tabla.Rows[aux + i + 2].Cells[1], precintoMuestra,8, false, Alignment.center, false);
+                
+                // Precinto Dirimentes
+
+                FormatTableCell(tabla.Rows[aux + i + 3].Cells[0], "Precintos de dirimencias", 8, false, Alignment.left, false);
+                FormatTableCell(tabla.Rows[aux + i + 3].Cells[1], precintoDirimente, 8, false, Alignment.center, false);
+            }
+
+            tabla.InsertRow();
+
+            AgregarDescripcion(tabla, "Se tomaron muestras dirimentes con la misma metodología de extracción, en la misma cantidad, con precinto propio y sin requerimiento de ensayo");
+        
+            document.InsertTable(tabla);
+            document.InsertParagraph();
 
         }
         
