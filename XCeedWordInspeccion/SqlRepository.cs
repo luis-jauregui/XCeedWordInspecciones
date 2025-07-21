@@ -44,16 +44,46 @@ namespace XCeedWordInspeccion
             }
         }
 
-        public IEnumerable<T> ObtenerCodigoViasFisicoSensorial<T>(int idOt, int correlativo)
+        public IEnumerable<T> ObtenerCodigoViasFisicoSensorial<T>(int idOtc)
         {
             using (SqlConnection connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                string storedProcedure = "usp_get_ViasFisicoSensoriales"; // Nombre del procedimiento almacenado
+                string storedProcedure = "usp_get_ViasFisicoSensorialesPorIdOtc"; // Nombre del procedimiento almacenado
 
                 return connection.Query<T>(
                     storedProcedure,
-                    new { IdOT = idOt, Correlativo = correlativo },
+                    new { IdOtc = idOtc },
+                    commandType: CommandType.StoredProcedure // Indicar que es un SP
+                );
+            }
+        }
+        
+        public IEnumerable<T> ObtenerCodigoViasFisicoSensorialSecoSalado<T>(int idOtc)
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string storedProcedure = "sp_get_ViasFisicoSensorialPorIdOtc_SecoSalado"; // Nombre del procedimiento almacenado
+
+                return connection.Query<T>(
+                    storedProcedure,
+                    new { IdOtc = idOtc },
+                    commandType: CommandType.StoredProcedure // Indicar que es un SP
+                );
+            }
+        }
+        
+        public IEnumerable<T> ObtenerExamenesSensorialSecoSalado<T>(int idOtc, int correlativo)
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string storedProcedure = "sp_get_ExamenesSensorialesSecoSalado"; // Nombre del procedimiento almacenado
+
+                return connection.Query<T>(
+                    storedProcedure,
+                    new { IdOtc = idOtc, Correlativo = correlativo },
                     commandType: CommandType.StoredProcedure // Indicar que es un SP
                 );
             }

@@ -34,7 +34,7 @@
         public class CodigoViaFisicoSensorial
         {
             public int IdProducto { get; set; }
-            public string Codigos { get; set; }
+            public string CodigoInterno { get; set; }
             public string RangoVias { get; set; }
         }
 
@@ -176,6 +176,19 @@
             // Exclusivo para FS
             public string MuestraLaboratorioCierre { get; set; }
             public string MuestraDirimenteCierre { get; set; }
+        }
+
+        public class UspGetListarAnalisisCNNuevo
+        {
+            public int IdProducto { get; set; }
+            public string Codigos { get; set; }
+            public string Latas { get; set; }
+            public string Aspecto { get; set; }
+            public string Color { get; set; }
+            public string Olor { get; set; }
+            public string Sabor { get; set; }
+            public string Textura { get; set; }
+            public string Liquido { get; set; }
         }
         
     }
