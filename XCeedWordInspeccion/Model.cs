@@ -182,6 +182,22 @@
         {
             public int IdProducto { get; set; }
             public string Codigos { get; set; }
+            public int NVia  { get; set; }
+            public string Latas { get; set; }
+            public string Aspecto { get; set; }
+            public string Color { get; set; }
+            public string Olor { get; set; }
+            public string Sabor { get; set; }
+            public string Textura { get; set; }
+            public string Liquido { get; set; }
+        }
+        
+        public class FisicoSensorialCongeladoExportacionTodoDestino
+        {
+            public int IdProducto { get; set; }
+            public string Codigos { get; set; }
+            public int NVia  { get; set; }
+            public string ProductoCodigo { get; set; }
             public string Latas { get; set; }
             public string Aspecto { get; set; }
             public string Color { get; set; }
