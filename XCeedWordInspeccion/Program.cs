@@ -3088,7 +3088,7 @@ namespace XCeedWordInspeccion
 
             // Ancho de columnas
 
-            int[] anchoColumnas = { 25, 30, 23, 23, 47, 47, 50, 47, 47, 47, 47, 47, 55 };
+            int[] anchoColumnas = { 23, 30, 23, 23, 47, 47, 50, 47, 47, 47, 47, 47, 55 };
 
             for (int i = 0; i < tablaColumnas; i++)
             {
@@ -3101,6 +3101,9 @@ namespace XCeedWordInspeccion
 
             tabla.MergeCellsInColumn(0, 1, ultimaFila); // Codigos
             tabla.MergeCellsInColumn(1, 1, ultimaFila); // Vias
+            tabla.MergeCellsInColumn(2, cabeceraFilas, tabla.RowCount - 1); // N°
+            tabla.MergeCellsInColumn(3, cabeceraFilas, tabla.RowCount - 1); // C
+            tabla.MergeCellsInColumn(tabla.ColumnCount - 1, cabeceraFilas, tabla.RowCount - 1);
             tabla.MergeCellsInColumn(tabla.ColumnCount - 1, 1, ultimaFila); // Ùltima columnna
 
             // Examenes sensoriales
@@ -3137,7 +3140,7 @@ namespace XCeedWordInspeccion
             // Aspecto
 
             FormatTableCell(tabla.Rows[1].Cells[5], "ASPECTO", 6, true, Alignment.center);
-            FormatTableCell(tabla.Rows[2].Cells[6], "Normal. Ausencia de materias extrañas. No existen zonas micóticas, Ni moho Alófilo. Ausencia de quemaduras por excesivo calentamiento durante el secado evidenciadas por una piel viscosa o pegajosa", 6, false, Alignment.both);
+            FormatTableCell(tabla.Rows[2].Cells[6], "El producto se presenta bien conservado, con aspecto normal. No presenta deshidratación en más del 10% de la superficie del producto. no contiene materias extrañas ni alteraciones gelatinosas en la carne que afecte a más del 5 %, en peso. de la muestra.", 6, false, Alignment.both);
             
             // Materias extrañas
 
@@ -3152,17 +3155,17 @@ namespace XCeedWordInspeccion
             // Olor
 
             FormatTableCell(tabla.Rows[1].Cells[8], "OLOR", 6, true, Alignment.center);
-            FormatTableCell(tabla.Rows[2].Cells[9], "Propio.Característico. Ausencia de olores objetables, persistentes e inconfundibles que sean signos de descomposición (olor ácido, pútrido, etc) o de contaminación por sustancias extrañas (combustibles, productos de limpieza, etc)", 6, false, Alignment.both);
+            FormatTableCell(tabla.Rows[2].Cells[9], "Normal, característico de la especie y la presentación. No existen aromas anormales. ni signo de descomposición o rancidez", 6, false, Alignment.both);
 
             // Color
 
             FormatTableCell(tabla.Rows[1].Cells[9], "COLOR", 6, true, Alignment.center);
-            FormatTableCell(tabla.Rows[2].Cells[10], "Natural, típico y uniforme. No se permite la presencia de manchas Rojizas o verdosas ni decoloración amarilla o naranja amarillenta", 6, false, Alignment.both);
+            FormatTableCell(tabla.Rows[2].Cells[10], "Natural, típico de la especie.", 6, false, Alignment.both);
             
             // Textura
 
             FormatTableCell(tabla.Rows[1].Cells[10], "TEXTURA", 6, true, Alignment.center);
-            FormatTableCell(tabla.Rows[2].Cells[11], "Típica de acuerdo al producto. Ausencia de carne con textura caracterizada por agrietamiento generalizado en mas de dos tercios de superficie, desgarrada o rota", 6, false, Alignment.center);
+            FormatTableCell(tabla.Rows[2].Cells[11], "Pescado: Turgente, firme y tierna, típica de la especie. Surimi: Elástica", 6, false, Alignment.center);
 
             // Conclusion
 
@@ -3172,54 +3175,68 @@ namespace XCeedWordInspeccion
 
             int inicio = cabeceraFilas;
             
-            codigoViasA = codigoViasA.OrderBy(v => v.ProductoCodigo).ToList();
+            var gruposDeCodigos = resultadoFinal
+                .GroupBy(r => r.ProductoCodigo)
+                .OrderBy(g => g.Key); // Ordenamos por el código del producto.
             
-            for (int i = 0; i < codigoViasA.Count - 1; i++)
+            foreach (var grupo in gruposDeCodigos)
             {
-                string codigo = codigoViasA[i].ProductoCodigo;
-                int resultadoCount = inicio + resultadoFinal.Count(x => x.ProductoCodigo == codigo);
+                string codigo = grupo.Key; // El código del producto, ej: "(1)"
+                int totalFilasDelGrupo = grupo.Count(); // Cantidad de filas para este código.
+
+                // 3. Calculamos el índice de la última fila para este grupo.
+                //    Esta es la fórmula clave y correcta.
+                int fin = inicio + totalFilasDelGrupo - 1;
+
+                // 4. Escribimos el valor del código en la primera celda del grupo.
                 FormatTableCell(tabla.Rows[inicio].Cells[0], codigo, 6, false, Alignment.center, false);
-                tabla.MergeCellsInColumn(0, inicio, resultadoCount);
-                inicio = resultadoCount;
+
+                // 5. Combinamos las celdas de la columna 0, SÓLO SI hay más de una fila.
+                //    Esta es la única lógica de combinación que necesitas.
+                if (totalFilasDelGrupo > 1)
+                {
+                    tabla.MergeCellsInColumn(0, inicio, fin);
+                }
+
+                // 6. Actualizamos la variable 'inicio' para que apunte a la primera
+                //    fila del SIGUIENTE grupo en la próxima iteración.
+                inicio += totalFilasDelGrupo;
             }
-
-
+            
             // Vias
 
-            // for (int i = 0; i < resultadoFinal.Count; i++)
-            // {
-            //     // string codigo = resultadoFinal[i].ProductoCodigo;
-            //     string codigoInterno = resultadoFinal[i].Codigos;
-            //     string nroVia = resultadoFinal[i].NVia.ToString();
-            //     
-            //     // FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[0], codigo, 6, false, Alignment.center, false);
-            //     FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[1], codigoInterno, 6, false, Alignment.center, false);
-            //     FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[2], nroVia, 6, false, Alignment.center, false);
-            //     FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[3], "", 6, false, Alignment.center, false);
-            //     FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[4], "", 6, false, Alignment.center, false);
-            //     
-            //     // var aspecto = examenesSensorial
-            //     //     .Where(e => e.Codigos == codigoInterno)
-            //     //     .All(e => e.Aspecto == "BUENO") ? "Bueno" : "No Bueno";
-            //     //
-            //     // var color = examenesSensorial
-            //     //     .Where(e => e.Codigos == codigoInterno)
-            //     //     .All(e => e.Color == "BUENO") ? "Bueno" : "No Bueno";
-            //     //
-            //     // var olor = examenesSensorial
-            //     //     .Where(e => e.Codigos == codigoInterno)
-            //     //     .All(e => e.Olor == "BUENO") ? "Bueno" : "No Bueno";
-            //     //
-            //     // var textura = examenesSensorial
-            //     //     .Where(e => e.Codigos == codigoInterno)
-            //     //     .All(e => e.Textura == "BUENO") ? "Bueno" : "No Bueno";
-            //     //     
-            //     // FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[6], aspecto, 6, false, Alignment.center, false);
-            //     // FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[7], olor, 6, false, Alignment.center, false);
-            //     // FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[8], color, 6, false, Alignment.center, false);
-            //     // FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[9], textura, 6, false, Alignment.center, false);
-            //     
-            // }
+            for (int i = 0; i < resultadoFinal.Count; i++)
+            {
+                string nroVia = resultadoFinal[i].NVia.ToString();
+                string codigoInterno = resultadoFinal[i].Codigos;
+                
+                // FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[0], codigo, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[1], nroVia, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[2], "", 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[3], "", 6, false, Alignment.center, false);
+                
+                var aspecto = examenesSensorial
+                    .Where(e => e.Codigos == codigoInterno)
+                    .All(e => e.Aspecto == "BUENO") ? "Bueno" : "No Bueno";
+                
+                var color = examenesSensorial
+                    .Where(e => e.Codigos == codigoInterno)
+                    .All(e => e.Color == "BUENO") ? "Bueno" : "No Bueno";
+                
+                var olor = examenesSensorial
+                    .Where(e => e.Codigos == codigoInterno)
+                    .All(e => e.Olor == "BUENO") ? "Bueno" : "No Bueno";
+                
+                var textura = examenesSensorial
+                    .Where(e => e.Codigos == codigoInterno)
+                    .All(e => e.Textura == "BUENO") ? "Bueno" : "No Bueno";
+                    
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[6], aspecto, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[9], olor, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[10], color, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[11], textura, 6, false, Alignment.center, false);
+                
+            }
 
             tabla.InsertRow();
 
