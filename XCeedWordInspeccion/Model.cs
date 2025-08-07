@@ -207,5 +207,12 @@
             public string Liquido { get; set; }
         }
         
+        
+        public class Analisis
+        {
+            public int Id { get; set; }
+            public string Label { get; set; }
+        }
+        
     }
 }

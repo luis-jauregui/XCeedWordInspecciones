@@ -2894,11 +2894,22 @@ namespace XCeedWordInspeccion
         
         public static void CrearTablaCongeladosPeruOtrosPaises(DocX documento, SqlRepository repository)
         {
+            
             List<Model.CodigoVia> codigoVias = repository.ObtenerCodigoVias<Model.CodigoVia>("250425.10").ToList();
             List<Model.Ensayo> ensayos = repository.ObtenerEnsayos<Model.Ensayo>(80082, 5, 2).ToList();
             List<Model.ViaResultado> viaResultado = repository.ViasResultados<Model.ViaResultado>(80082, 2).ToList();
             List<Model.Via> vias = repository.ObtenerVias<Model.Via>(80082, 2, 5).ToList();
 
+            // Declara la lista que contendrá objetos de tipo Model.Analisis
+            var analisis = new List<Model.Analisis>();
+                      
+            analisis.Add(new Model.Analisis { Id = 829, Label = "Aerobios mesófilos (30°C)" });
+            analisis.Add(new Model.Analisis { Id = 11, Label  = "Escherichia coli (NMP/g)" });
+            analisis.Add(new Model.Analisis { Id = 377, Label = "Staphylococcus aureus" });
+            analisis.Add(new Model.Analisis { Id = 433, Label = "Salmonella spp" });
+            analisis.Add(new Model.Analisis { Id = 222, Label = "Vibrio cholerae" });
+            analisis.Add(new Model.Analisis { Id = 345, Label = "Vibrio parahaemolyticus" });
+            
             var totalTables = (int)Math.Ceiling(vias.Count / (double)MAX_VIAS);
             
             for (int iTable = 0; iTable < totalTables; iTable++)
@@ -3000,12 +3011,11 @@ namespace XCeedWordInspeccion
                 
                 // Ensayos
             
-                for (int t = 0; t < ensayos.Count; t++)
+                for (int t = 0; t < analisis.Count; t++)
                 {
-
-                    string ensayoLabel = ensayos[t].Analisis;
+                    string analisisLabel = analisis[t].Label;
                 
-                    FormatTableCell(tabla.Rows[encabezadoFilas + t].Cells[0], ensayoLabel, 8, false, Alignment.left, false);
+                    FormatTableCell(tabla.Rows[encabezadoFilas + t].Cells[0], analisisLabel, 8, false, Alignment.left, false);
                     FormatTableCell(tabla.Rows[encabezadoFilas + t].Cells[1], "5", 8, false, Alignment.center, false);
 
                     int j = 5;
@@ -3014,13 +3024,12 @@ namespace XCeedWordInspeccion
                 
                     var resultados = 
                         rangoResultados
-                            .Where(v => v.IdAnalisis == ensayos[t].IdAnalisis).ToList()
+                            .Where(v => v.IdAnalisis == analisis[t].Id).ToList()
                             .GetRange((iTable * MAX_VIAS), Math.Min(MAX_VIAS, rangoResultados.Count - iTable * MAX_VIAS));
 
                     foreach (var via in resultados)
                     {
-                    
-                        // bool match = (ensayos[i].IdProducto == via.IdProducto && ensayos[i].IdAnalisis == via.IdAnalisis && via.CodigoInterno ==);
+                        // bool match = (ensayos[t].IdProducto == via.IdProducto && ensayos[t].IdAnalisis == via.IdAnalisis);
 
                         if (true)
                         {
@@ -3032,8 +3041,6 @@ namespace XCeedWordInspeccion
                     }
                     
                 }
-                
-                // tabla.Rows.Last().Remove();
                 
                 // Conclusión
 
