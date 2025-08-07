@@ -25,8 +25,8 @@ namespace XCeedWordInspeccion
         {
             
             string filename = "Inspecciones.docx";
-            string templatePath = @"C:\Users\ljauregui\RiderProjects\XCeedWord\XCeedWord\bin\Debug\PlantillaAC.docx";
-            // string templatePath = @"C:\Users\LUIS\RiderProjects\XCeedWordInspecciones\XCeedWordInspeccion\bin\Debug\PlantillaAC.docx";
+            // string templatePath = @"C:\Users\ljauregui\RiderProjects\XCeedWord\XCeedWord\bin\Debug\PlantillaAC.docx";
+            string templatePath = @"C:\Users\LUIS\RiderProjects\XCeedWordInspecciones\XCeedWordInspeccion\bin\Debug\PlantillaAC.docx";
             
             
             File.Copy(templatePath, filename, true);
@@ -71,6 +71,8 @@ namespace XCeedWordInspeccion
                 CrearTablaCongeladosPeruOtrosPaises(document, repository);
                 document.InsertParagraph();
                 CrearTablaFisicoSensorialCongelados(document, repository);
+                document.InsertParagraph();
+                CrearTablaFisicoSensorialCongeladosCrudos(document, repository);
                 // CrearTablaMuestrasExtraidasMicrobiologia(document, repository);
                 // document.InsertParagraph();
                 // CrearTablaMuestrasExtraidasFisicoSensorial(document, repository);
@@ -3186,45 +3188,194 @@ namespace XCeedWordInspeccion
 
             // Vias
 
-            // for (int i = 0; i < resultadoFinal.Count; i++)
-            // {
-            //     // string codigo = resultadoFinal[i].ProductoCodigo;
-            //     string codigoInterno = resultadoFinal[i].Codigos;
-            //     string nroVia = resultadoFinal[i].NVia.ToString();
-            //     
-            //     // FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[0], codigo, 6, false, Alignment.center, false);
-            //     FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[1], codigoInterno, 6, false, Alignment.center, false);
-            //     FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[2], nroVia, 6, false, Alignment.center, false);
-            //     FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[3], "", 6, false, Alignment.center, false);
-            //     FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[4], "", 6, false, Alignment.center, false);
-            //     
-            //     // var aspecto = examenesSensorial
-            //     //     .Where(e => e.Codigos == codigoInterno)
-            //     //     .All(e => e.Aspecto == "BUENO") ? "Bueno" : "No Bueno";
-            //     //
-            //     // var color = examenesSensorial
-            //     //     .Where(e => e.Codigos == codigoInterno)
-            //     //     .All(e => e.Color == "BUENO") ? "Bueno" : "No Bueno";
-            //     //
-            //     // var olor = examenesSensorial
-            //     //     .Where(e => e.Codigos == codigoInterno)
-            //     //     .All(e => e.Olor == "BUENO") ? "Bueno" : "No Bueno";
-            //     //
-            //     // var textura = examenesSensorial
-            //     //     .Where(e => e.Codigos == codigoInterno)
-            //     //     .All(e => e.Textura == "BUENO") ? "Bueno" : "No Bueno";
-            //     //     
-            //     // FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[6], aspecto, 6, false, Alignment.center, false);
-            //     // FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[7], olor, 6, false, Alignment.center, false);
-            //     // FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[8], color, 6, false, Alignment.center, false);
-            //     // FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[9], textura, 6, false, Alignment.center, false);
-            //     
-            // }
+            for (int i = 0; i < resultadoFinal.Count; i++)
+            {
+                // string codigo = resultadoFinal[i].ProductoCodigo;
+                string codigoInterno = resultadoFinal[i].Codigos;
+                string nroVia = resultadoFinal[i].NVia.ToString();
+                
+                // FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[0], codigo, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[1], codigoInterno, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[2], nroVia, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[3], "", 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[4], "", 6, false, Alignment.center, false);
+                
+                var aspecto = examenesSensorial
+                    .Where(e => e.Codigos == codigoInterno)
+                    .All(e => e.Aspecto == "BUENO") ? "Bueno" : "No Bueno";
+                
+                var color = examenesSensorial
+                    .Where(e => e.Codigos == codigoInterno)
+                    .All(e => e.Color == "BUENO") ? "Bueno" : "No Bueno";
+                
+                var olor = examenesSensorial
+                    .Where(e => e.Codigos == codigoInterno)
+                    .All(e => e.Olor == "BUENO") ? "Bueno" : "No Bueno";
+                
+                var textura = examenesSensorial
+                    .Where(e => e.Codigos == codigoInterno)
+                    .All(e => e.Textura == "BUENO") ? "Bueno" : "No Bueno";
+                    
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[6], aspecto, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[7], olor, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[8], color, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[9], textura, 6, false, Alignment.center, false);
+                
+            }
 
             tabla.InsertRow();
 
             AgregarDescripcion(tabla,
                 "(*) El paréntesis en el número de aceptación (c) indica el número de aceptación para descomposición \n METODO DE ENSAYO (ANALISIS SENSORIAL  : ISO 4121. SECOUND EDITION. Item 5.2, 6.3.2: 2003: Sensory analysis. Guidelines for the use of quantitative response scales");
+            
+            // Guardar
+
+            documento.InsertTable(tabla);
+        }
+        
+        public static void CrearTablaFisicoSensorialCongeladosCrudos(DocX documento, SqlRepository repository)
+        {
+            
+            
+            List<Model.CodigoVia> codigoViasA = repository.ObtenerCodigoVias<Model.CodigoVia>("250425.10").ToList();
+            
+            List<Model.CodigoViaFisicoSensorial> codigoVias =
+                repository.ObtenerCodigoViasFisicoSensorialSecoSalado<Model.CodigoViaFisicoSensorial>(7142).ToList();
+
+            List<Model.UspGetListarAnalisisCNNuevo> examenesSensorial = repository
+                .ObtenerExamenesSensorialSecoSalado<Model.UspGetListarAnalisisCNNuevo>(7142, 1).ToList();
+            
+            int cabeceraFilas = 3;
+            int cabeceraColumnas = 13;
+
+            int tablaFilas = cabeceraFilas + codigoVias.Count;
+            int tablaColumnas = cabeceraColumnas;
+
+            Table tabla = documento.AddTable(tablaFilas, tablaColumnas);
+            tabla.Alignment = Alignment.left;
+
+            // Encabezado
+
+            // Ancho de columnas
+
+            int[] anchoColumnas = { 25, 30, 23, 23, 47, 47, 50, 47, 47, 47, 47, 47, 55 };
+
+            for (int i = 0; i < tablaColumnas; i++)
+            {
+                tabla.SetColumnWidth(i, anchoColumnas[i]);
+            }
+
+            // Combinar filas
+            
+            int ultimaFila = cabeceraFilas - 1;
+
+            tabla.MergeCellsInColumn(0, 1, ultimaFila); // Codigos
+            tabla.MergeCellsInColumn(1, 1, ultimaFila); // Vias
+            tabla.MergeCellsInColumn(tabla.ColumnCount - 1, 1, ultimaFila); // Ùltima columnna
+
+            // Examenes sensoriales
+
+            tabla.Rows[0].MergeCells(0, tabla.Rows[1].Cells.Count - 1);
+            FormatTableCell(tabla.Rows[0].Cells[0], "EXAMENES SENSORIALES", 7, true, Alignment.center);
+
+            // Codigo
+
+            tabla.Rows[1].Height = 30;
+            FormatTableCell(tabla.Rows[1].Cells[0], "CÓDIGO", 8, true, Alignment.center, true, TextDirection.btLr);
+
+            // Vías (n)
+
+            FormatTableCell(tabla.Rows[1].Cells[1], "VIAS (n)", 7, true, Alignment.center);
+
+            // Numero de aceptacion
+
+            tabla.Rows[1].MergeCells(2, 3);
+            FormatTableCell(tabla.Rows[1].Cells[2], "NÚMERO DE ACEPTACIÓN", 6, true, Alignment.center);
+            FormatTableCell(tabla.Rows[2].Cells[2], "N°", 6, true, Alignment.center);
+            FormatTableCell(tabla.Rows[2].Cells[3], "C", 6, true, Alignment.center);
+
+            // Especie
+
+            FormatTableCell(tabla.Rows[1].Cells[3], "ESPECIE", 6, true, Alignment.center);
+            FormatTableCell(tabla.Rows[2].Cells[4], "Corresponde a la declarada por el exportador", 6, false, Alignment.center);
+
+            // Presentacion
+
+            FormatTableCell(tabla.Rows[1].Cells[4], "PRESENTACION", 6, true, Alignment.center);
+            FormatTableCell(tabla.Rows[2].Cells[5], "Corresponde a la declarada por el exportador y debe incluir todos los aspectos señalados por éste (ejemplo: tipo de corte, tipo de empaque, entre otros)", 6, false, Alignment.both);
+
+            // Aspecto
+
+            FormatTableCell(tabla.Rows[1].Cells[5], "ASPECTO", 6, true, Alignment.center);
+            FormatTableCell(tabla.Rows[2].Cells[6], "Normal. Ausencia de materias extrañas. No existen zonas micóticas, Ni moho Alófilo. Ausencia de quemaduras por excesivo calentamiento durante el secado evidenciadas por una piel viscosa o pegajosa", 6, false, Alignment.both);
+            
+            // Materias extrañas
+
+            FormatTableCell(tabla.Rows[1].Cells[6], "MATERIAS EXTRAÑAS", 6, true, Alignment.center);
+            FormatTableCell(tabla.Rows[2].Cells[7], "Ausencia", 6, false, Alignment.center);
+            
+            // Parásitos
+
+            FormatTableCell(tabla.Rows[1].Cells[7], "PÁRASITOS", 6, true, Alignment.center);
+            FormatTableCell(tabla.Rows[2].Cells[8], "Ausencia de parásitos vivos. Además, el producto no evidencia presencia manifiesta de parásitos muertos. En caso de detectarse presencia no manifiesta de parásitos muertos debe acreditarse siempre un tratamiento de congelación mínimo de 10 días a -18°C o 7 días a -20°C u otro tratamiento equivalente.", 6, false, Alignment.both);
+            
+            // Olor
+
+            FormatTableCell(tabla.Rows[1].Cells[8], "OLOR", 6, true, Alignment.center);
+            FormatTableCell(tabla.Rows[2].Cells[9], "Propio.Característico. Ausencia de olores objetables, persistentes e inconfundibles que sean signos de descomposición (olor ácido, pútrido, etc) o de contaminación por sustancias extrañas (combustibles, productos de limpieza, etc)", 6, false, Alignment.both);
+
+            // Color
+
+            FormatTableCell(tabla.Rows[1].Cells[9], "COLOR", 6, true, Alignment.center);
+            FormatTableCell(tabla.Rows[2].Cells[10], "Natural, típico de la especie.", 6, false, Alignment.both);
+            
+            // Textura
+
+            FormatTableCell(tabla.Rows[1].Cells[10], "TEXTURA", 6, true, Alignment.center);
+            FormatTableCell(tabla.Rows[2].Cells[11], "Pescado: Turgente, firme y tierna, típica de la especie. Surimi: Elástica", 6, false, Alignment.center);
+
+            // Conclusion
+
+            FormatTableCell(tabla.Rows[1].Cells[11], "CONCLUSION", 6, true, Alignment.center);
+            
+            // Vias
+
+            for (int i = 0; i < codigoVias.Count; i++)
+            {
+                // string codigo = resultadoFinal[i].ProductoCodigo;
+                string codigoInterno = codigoVias[i].CodigoInterno;
+                string rangoVias = codigoVias[i].RangoVias;
+                
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[0], codigoInterno, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[1], rangoVias, 6, false, Alignment.center, false);
+                
+                var aspecto = examenesSensorial
+                    .Where(e => e.Codigos == codigoInterno)
+                    .All(e => e.Aspecto == "BUENO") ? "Bueno" : "No Bueno";
+                
+                var color = examenesSensorial
+                    .Where(e => e.Codigos == codigoInterno)
+                    .All(e => e.Color == "BUENO") ? "Bueno" : "No Bueno";
+                
+                var olor = examenesSensorial
+                    .Where(e => e.Codigos == codigoInterno)
+                    .All(e => e.Olor == "BUENO") ? "Bueno" : "No Bueno";
+                
+                var textura = examenesSensorial
+                    .Where(e => e.Codigos == codigoInterno)
+                    .All(e => e.Textura == "BUENO") ? "Bueno" : "No Bueno";
+                
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[6], aspecto, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[7], olor, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[8], color, 6, false, Alignment.center, false);
+                FormatTableCell(tabla.Rows[cabeceraFilas + i].Cells[9], textura, 6, false, Alignment.center, false);
+                
+            }
+
+            tabla.InsertRow();
+
+            AgregarDescripcion(tabla,
+                "*El paréntesis en el número de aceptación (c) indica el número de aceptación para descomposición");
             
             // Guardar
 
